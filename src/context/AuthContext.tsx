@@ -13,6 +13,13 @@ type User = {
 type AuthContextType = {
   user: User | null;
   loading: boolean;
+  register: (
+    first_name: string,
+    last_name: string,
+    phone_number: string,
+    password: string,
+    password_confirmation: string,
+  ) => Promise<void>;
   login: (phone: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 };
@@ -66,6 +73,25 @@ export function AuthProvider({ children }: any) {
     setLoading(false);
   }
 
+  async function register(
+    first_name: string,
+    last_name: string,
+    phone_number: string,
+    password: string,
+    password_confirmation: string,
+  ) {
+    const res = await api.post("/register", {
+      first_name,
+      last_name,
+      phone_number,
+      password,
+      password_confirmation,
+    });
+
+    await saveToken(res.data.token);
+    setUser(res.data.user);
+  }
+
   async function login(phone: string, password: string) {
     const res = await api.post("/login", {
       phone_number: phone,
@@ -92,7 +118,7 @@ export function AuthProvider({ children }: any) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, register, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

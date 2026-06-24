@@ -1,33 +1,39 @@
 import { router } from "expo-router";
 import { useState } from "react";
 import { Alert, Pressable, Text, TextInput, View } from "react-native";
-import { api, saveToken } from "../../services/api";
+import { useAuth } from "../../context/AuthContext";
 
 export default function Register() {
+  const { register } = useAuth();
+
   const [first_name, setFirst] = useState("");
   const [last_name, setLast] = useState("");
   const [phone_number, setPhone] = useState("");
   const [password, setPassword] = useState("");
-  const [password_confirmation, setConfirm] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
   async function handleRegister() {
+    if (loading) return;
+    setLoading(true);
+
     try {
-      const res = await api.post("/register", {
+      await register(
         first_name,
         last_name,
         phone_number,
         password,
-        password_confirmation,
-      });
+        confirmPassword,
+      );
 
-      await saveToken(res.data.token);
-
-      router.replace("/(user)/dashboard");
+      // NO router needed (your auth system handles it)
     } catch (err: any) {
       Alert.alert(
-        "Registration failed",
+        "Register failed",
         err?.response?.data?.message || "Something went wrong",
       );
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -37,31 +43,37 @@ export default function Register() {
 
       <TextInput
         placeholder="First name"
+        value={first_name}
         onChangeText={setFirst}
         style={{ borderWidth: 1, marginBottom: 10, padding: 10 }}
       />
+
       <TextInput
         placeholder="Last name"
+        value={last_name}
         onChangeText={setLast}
         style={{ borderWidth: 1, marginBottom: 10, padding: 10 }}
       />
+
       <TextInput
         placeholder="Phone number"
+        value={phone_number}
         onChangeText={setPhone}
         style={{ borderWidth: 1, marginBottom: 10, padding: 10 }}
       />
 
       <TextInput
         placeholder="Password"
-        secureTextEntry
+        value={password}
         onChangeText={setPassword}
-        style={{ borderWidth: 1, marginBottom: 10, padding: 10 }}
+        secureTextEntry
       />
+
       <TextInput
         placeholder="Confirm password"
+        value={confirmPassword}
+        onChangeText={setConfirmPassword}
         secureTextEntry
-        onChangeText={setConfirm}
-        style={{ borderWidth: 1, marginBottom: 20, padding: 10 }}
       />
 
       <Pressable
@@ -70,6 +82,12 @@ export default function Register() {
       >
         <Text style={{ color: "white", textAlign: "center" }}>
           Create account
+        </Text>
+      </Pressable>
+
+      <Pressable onPress={() => router.back()}>
+        <Text style={{ marginTop: 15, textAlign: "center" }}>
+          Already have an account?
         </Text>
       </Pressable>
     </View>
