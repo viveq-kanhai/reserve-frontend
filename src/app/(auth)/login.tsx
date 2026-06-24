@@ -1,37 +1,23 @@
 import { router } from "expo-router";
 import { useState } from "react";
-import { Alert, Pressable, Text, TextInput, View } from "react-native";
-import { api, saveToken } from "../../services/api";
+import { Pressable, Text, TextInput, View } from "react-native";
+import { useAuth } from "../../context/AuthContext";
 
 export default function Login() {
   const [phone_number, setPhone] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const { login } = useAuth();
 
   async function handleLogin() {
+    if (loading) return;
+
+    setLoading(true);
+
     try {
-      const res = await api.post("/login", {
-        phone_number,
-        password,
-      });
-
-      await saveToken(res.data.token);
-
-      const user = res.data.user;
-
-      // role-based routing (we'll refine later)
-      if (user.role === "admin") {
-        router.replace("/(admin)/dashboard");
-      } else {
-        router.replace("/(user)/dashboard");
-      }
-    } catch (err: any) {
-      console.log("LOGIN ERROR:", err?.response?.data);
-      console.log("FULL ERROR:", err);
-
-      Alert.alert(
-        "Login failed",
-        JSON.stringify(err?.response?.data || err.message),
-      );
+      await login(phone_number, password);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -60,6 +46,7 @@ export default function Login() {
       />
 
       <Pressable
+        disabled={loading}
         onPress={handleLogin}
         style={{ backgroundColor: "black", padding: 15 }}
       >
