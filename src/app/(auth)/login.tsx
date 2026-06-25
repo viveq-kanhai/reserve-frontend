@@ -1,63 +1,56 @@
-import { router } from "expo-router";
 import { useState } from "react";
-import { Pressable, Text, TextInput, View } from "react-native";
+import { View } from "react-native";
 import { useAuth } from "../../context/AuthContext";
+import AuthButton from "../components/auth/AuthButton";
+import AuthInput from "../components/auth/AuthInput";
+import AuthLayout from "../components/auth/AuthLayout";
+import AuthTabs from "../components/auth/AuthTabs";
 
 export default function Login() {
   const [phone_number, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { login } = useAuth();
 
   async function handleLogin() {
     if (loading) return;
 
     setLoading(true);
+    setError(null);
 
     try {
       await login(phone_number, password);
+    } catch (e: any) {
+      const message =
+        e?.response?.data?.message || "Something went wrong. Please try again.";
+
+      setError(message);
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <View style={{ flex: 1, justifyContent: "center", padding: 20 }}>
-      <Text style={{ fontSize: 24, marginBottom: 20 }}>Login</Text>
+    <AuthLayout error={error}>
+      <AuthTabs />
+      <View>
+        <AuthInput
+          placeholder="Phone number"
+          value={phone_number}
+          onChangeText={setPhone}
+        />
 
-      <TextInput
-        placeholder="Phone number"
-        value={phone_number}
-        onChangeText={setPhone}
-        style={{ borderWidth: 1, marginBottom: 10, padding: 10 }}
-      />
-
-      <TextInput
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-        style={{
-          borderWidth: 1,
-          marginBottom: 20,
-          padding: 10,
-          color: "black",
-        }}
-      />
-
-      <Pressable
-        disabled={loading}
-        onPress={handleLogin}
-        style={{ backgroundColor: "black", padding: 15 }}
-      >
-        <Text style={{ color: "white", textAlign: "center" }}>Login</Text>
-      </Pressable>
-
-      <Pressable onPress={() => router.push("/(auth)/register")}>
-        <Text style={{ marginTop: 15, textAlign: "center" }}>
-          Create account
-        </Text>
-      </Pressable>
-    </View>
+        <AuthInput
+          placeholder="Password"
+          secureTextEntry
+          value={password}
+          onChangeText={setPassword}
+        />
+      </View>
+      <View>
+        <AuthButton title="Login" onPress={handleLogin} />
+      </View>
+    </AuthLayout>
   );
 }

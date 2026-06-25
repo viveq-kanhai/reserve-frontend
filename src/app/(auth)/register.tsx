@@ -1,7 +1,10 @@
-import { router } from "expo-router";
 import { useState } from "react";
-import { Alert, Pressable, Text, TextInput, View } from "react-native";
+import { View } from "react-native";
 import { useAuth } from "../../context/AuthContext";
+import AuthButton from "../components/auth/AuthButton";
+import AuthInput from "../components/auth/AuthInput";
+import AuthLayout from "../components/auth/AuthLayout";
+import AuthTabs from "../components/auth/AuthTabs";
 
 export default function Register() {
   const { register } = useAuth();
@@ -12,10 +15,12 @@ export default function Register() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleRegister() {
     if (loading) return;
     setLoading(true);
+    setError(null);
 
     try {
       await register(
@@ -25,71 +30,55 @@ export default function Register() {
         password,
         confirmPassword,
       );
-
-      // NO router needed (your auth system handles it)
     } catch (err: any) {
-      Alert.alert(
-        "Register failed",
-        err?.response?.data?.message || "Something went wrong",
-      );
+      const message = err?.response?.data?.message || "Something went wrong";
+
+      setError(message);
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <View style={{ flex: 1, justifyContent: "center", padding: 20 }}>
-      <Text style={{ fontSize: 24, marginBottom: 20 }}>Register</Text>
+    <AuthLayout error={error}>
+      <AuthTabs />
 
-      <TextInput
-        placeholder="First name"
-        value={first_name}
-        onChangeText={setFirst}
-        style={{ borderWidth: 1, marginBottom: 10, padding: 10 }}
-      />
+      <View className="">
+        <AuthInput
+          placeholder="First name"
+          value={first_name}
+          onChangeText={setFirst}
+        />
 
-      <TextInput
-        placeholder="Last name"
-        value={last_name}
-        onChangeText={setLast}
-        style={{ borderWidth: 1, marginBottom: 10, padding: 10 }}
-      />
+        <AuthInput
+          placeholder="Last name"
+          value={last_name}
+          onChangeText={setLast}
+        />
 
-      <TextInput
-        placeholder="Phone number"
-        value={phone_number}
-        onChangeText={setPhone}
-        style={{ borderWidth: 1, marginBottom: 10, padding: 10 }}
-      />
+        <AuthInput
+          placeholder="Phone number"
+          keyboardType="phone-pad"
+          value={phone_number}
+          onChangeText={setPhone}
+        />
 
-      <TextInput
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
+        <AuthInput
+          placeholder="Password"
+          secureTextEntry
+          value={password}
+          onChangeText={setPassword}
+        />
 
-      <TextInput
-        placeholder="Confirm password"
-        value={confirmPassword}
-        onChangeText={setConfirmPassword}
-        secureTextEntry
-      />
+        <AuthInput
+          placeholder="Confirm password"
+          secureTextEntry
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+        />
+      </View>
 
-      <Pressable
-        onPress={handleRegister}
-        style={{ backgroundColor: "black", padding: 15 }}
-      >
-        <Text style={{ color: "white", textAlign: "center" }}>
-          Create account
-        </Text>
-      </Pressable>
-
-      <Pressable onPress={() => router.back()}>
-        <Text style={{ marginTop: 15, textAlign: "center" }}>
-          Already have an account?
-        </Text>
-      </Pressable>
-    </View>
+      <AuthButton title="Create Account" onPress={handleRegister} />
+    </AuthLayout>
   );
 }
