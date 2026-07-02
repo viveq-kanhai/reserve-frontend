@@ -1,31 +1,136 @@
-import { Pressable, Text, View } from "react-native";
-import { useAuth } from "../../context/AuthContext";
+import { Ionicons } from "@expo/vector-icons";
+import { useEffect, useState } from "react";
+import { Image, Pressable, Text, View } from "react-native";
+import { api } from "../../services/api";
 
 export default function UserDashboard() {
-  const { logout } = useAuth();
+  const [data, setData] = useState<any>(null);
+
+  const allTransactions = [
+    ...(data?.transactions ?? []),
+    ...(data?.withdrawal_requests ?? []),
+    ...(data?.payment_requests ?? []),
+  ];
+
+  useEffect(() => {
+    api
+      .get("/dashboard")
+      .then((res) => setData(res.data))
+      .catch((err) => console.log("Dashboard:", err));
+  }, []);
+
+  if (!data) return null;
 
   return (
-    <View
-      style={{
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-        gap: 20,
-      }}
-    >
-      <Text>User Dashboard</Text>
+    <View className="flex-1 bg-black">
+      {/* HEADER */}
+      <View className="flex-row items-center justify-between px-6 pt-14">
+        <Image
+          source={{ uri: "https://i.pravatar.cc/100" }}
+          className="h-10 w-10 rounded-full"
+        />
 
-      <Pressable
-        onPress={logout}
-        style={{
-          backgroundColor: "#dc2626",
-          paddingHorizontal: 20,
-          paddingVertical: 12,
-          borderRadius: 8,
-        }}
-      >
-        <Text style={{ color: "white", fontWeight: "600" }}>Logout</Text>
-      </Pressable>
+        <Pressable className="h-10 w-10 items-center justify-center rounded-full bg-zinc-900">
+          <Ionicons name="notifications" size={20} color="white" />
+        </Pressable>
+      </View>
+
+      {/* TOP SECTION */}
+      <View className="px-6 pt-16">
+        <View className="w-2/3">
+          <Text className="text-sm text-gray-400">Total Balance</Text>
+
+          <Text className="mt-2 text-5xl font-bold text-white">
+            ${data.user.balance}
+          </Text>
+
+          <View className="mt-6 flex-row gap-3">
+            <Pressable className="rounded-full bg-white px-5 py-2">
+              <Text className="text-sm font-semibold text-black">Send</Text>
+            </Pressable>
+
+            <Pressable className="rounded-full bg-zinc-800 px-5 py-2">
+              <Text className="text-sm font-semibold text-white">Request</Text>
+            </Pressable>
+          </View>
+        </View>
+
+        {/* 👇 STAT CARD NOW INSIDE FLOW */}
+        <View className="mt-8 rounded-3xl bg-zinc-900 p-6">
+          <Text className="text-xs uppercase tracking-widest text-gray-400">
+            This Month
+          </Text>
+
+          <Text className="mt-2 text-3xl font-bold text-white">$4,250</Text>
+
+          <Text className="mt-1 text-sm text-green-400">
+            ↑ 12.8% from last month
+          </Text>
+        </View>
+      </View>
+
+      {/* Push bottom sheet down */}
+      <View className="flex-1" />
+
+      {/* Bottom Sheet */}
+      <View className="h-[45%] rounded-t-[32px] bg-white px-5 pt-6">
+        {/* HEADER ROW */}
+        <View className="mb-4 flex-row items-center justify-between">
+          {/* Left: Filter */}
+          <Pressable className="h-9 w-9 items-center justify-center rounded-full bg-gray-100">
+            <Ionicons name="filter" size={18} color="black" />
+          </Pressable>
+
+          {/* Center: Title */}
+          <Text className="text-base font-semibold text-black">
+            Transactions
+          </Text>
+
+          {/* Right: Search */}
+          <Pressable className="h-9 w-9 items-center justify-center rounded-full bg-gray-100">
+            <Ionicons name="search" size={18} color="black" />
+          </Pressable>
+        </View>
+
+        {/* LIST */}
+        <View className="flex-1">
+          {allTransactions.map((item, index) => {
+            const isWithdrawal = !!item.amount && item.type === "withdrawal";
+            const isPayment = !!item.amount && item.type === "payment";
+
+            return (
+              <View
+                key={index}
+                className="mb-3 flex-row items-center justify-between rounded-2xl bg-gray-50 px-4 py-3"
+              >
+                {/* LEFT SIDE */}
+                <View>
+                  <Text className="font-semibold text-black">
+                    {isWithdrawal
+                      ? "Withdrawal"
+                      : isPayment
+                        ? "Payment Request"
+                        : "Transaction"}
+                  </Text>
+
+                  <Text className="text-xs text-gray-500">
+                    {new Date(item.created_at).toLocaleDateString()}
+                  </Text>
+                </View>
+
+                {/* RIGHT SIDE */}
+                <Text
+                  className={`font-semibold ${
+                    isWithdrawal ? "text-red-500" : "text-green-600"
+                  }`}
+                >
+                  {isWithdrawal ? "-" : "+"}${item.amount}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
+      </View>
     </View>
   );
 }
