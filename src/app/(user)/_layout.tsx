@@ -9,12 +9,6 @@ function TabBar({ state, navigation }: any) {
   const isActive = (routeName: string) =>
     state.routes[state.index].name === routeName;
 
-  const getBg = (routeName: string) =>
-    isActive(routeName) ? "bg-white px-3" : "bg-transparent px-0";
-
-  const getColor = (routeName: string) =>
-    isActive(routeName) ? "black" : "white";
-
   return (
     <View
       style={{
@@ -31,7 +25,9 @@ function TabBar({ state, navigation }: any) {
         <Pressable onPress={() => navigation.navigate("recipients")}>
           <View
             className={`h-10 flex-row items-center justify-center rounded-full ${
-              isActive("recipients") ? "bg-white px-4" : "w-10 bg-transparent"
+              isActive("recipients")
+                ? "bg-white px-4 rounded-full"
+                : "w-10 bg-transparent"
             }`}
           >
             <Ionicons
@@ -46,7 +42,9 @@ function TabBar({ state, navigation }: any) {
         <Pressable onPress={() => navigation.navigate("dashboard")}>
           <View
             className={`h-10 flex-row items-center justify-center rounded-full ${
-              isActive("dashboard") ? "bg-white px-6" : "w-10 bg-transparent"
+              isActive("dashboard")
+                ? "bg-white px-4 rounded-full"
+                : "w-10 bg-transparent"
             }`}
           >
             <Ionicons
@@ -61,7 +59,9 @@ function TabBar({ state, navigation }: any) {
         <Pressable onPress={() => navigation.navigate("quests")}>
           <View
             className={`h-10 flex-row items-center justify-center rounded-full ${
-              isActive("quests") ? "bg-white px-4" : "w-10 bg-transparent"
+              isActive("quests")
+                ? "bg-white px-4 rounded-full"
+                : "w-10 bg-transparent"
             }`}
           >
             <Ionicons
