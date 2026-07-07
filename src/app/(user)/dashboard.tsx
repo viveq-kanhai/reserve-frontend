@@ -1,10 +1,18 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
-import { Image, Pressable, Text, View } from "react-native";
+import { Alert, Image, KeyboardAvoidingView, Modal, Platform, Pressable, Text, TextInput, View } from "react-native";
 import { api } from "../../services/api";
 
 export default function UserDashboard() {
   const [data, setData] = useState<any>(null);
+
+  const [sendVisible, setSendVisible] = useState(false);
+
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [amount, setAmount] = useState("");
+
+  const [confirmVisible, setConfirmVisible] = useState(false);
+  const [sending, setSending] = useState(false);
 
   const allTransactions = [
     ...(data?.transactions ?? []),
@@ -20,6 +28,35 @@ export default function UserDashboard() {
   }, []);
 
   if (!data) return null;
+
+  async function transfer() {
+    try {
+      setSending(true);
+
+      await api.post("/transactions/transfer", {
+        phone_number: phoneNumber,
+        amount,
+      });
+
+      Alert.alert("Success", "Transfer completed.");
+
+      setConfirmVisible(false);
+      setSendVisible(false);
+
+      setPhoneNumber("");
+      setAmount("");
+
+      const res = await api.get("/dashboard");
+      setData(res.data);
+    } catch (e: any) {
+      Alert.alert(
+        "Transfer failed",
+        e.response?.data?.message ?? "Something went wrong.",
+      );
+    } finally {
+      setSending(false);
+    }
+  }
 
   return (
     <View className="flex-1 bg-black">
@@ -45,7 +82,10 @@ export default function UserDashboard() {
           </Text>
 
           <View className="mt-6 flex-row gap-3">
-            <Pressable className="rounded-full bg-white px-5 py-2">
+            <Pressable
+              onPress={() => setSendVisible(true)}
+              className="rounded-full bg-white px-5 py-2"
+            >
               <Text className="text-sm font-semibold text-black">Send</Text>
             </Pressable>
 
@@ -131,6 +171,87 @@ export default function UserDashboard() {
           })}
         </View>
       </View>
+
+      <Modal visible={sendVisible} transparent animationType="slide">
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          className="flex-1 justify-end bg-black/40"
+        >
+          <View className="rounded-t-3xl bg-white p-6 pb-10">
+            <Text className="mb-6 text-2xl font-bold">Send Points</Text>
+
+            <TextInput
+              placeholder="Recipient phone number"
+              value={phoneNumber}
+              onChangeText={setPhoneNumber}
+              keyboardType="phone-pad"
+              className="mb-4 rounded-xl border border-gray-300 px-4 py-4"
+            />
+
+            <TextInput
+              placeholder="Amount"
+              value={amount}
+              onChangeText={setAmount}
+              keyboardType="decimal-pad"
+              className="mb-6 rounded-xl border border-gray-300 px-4 py-4"
+            />
+
+            <Pressable
+              disabled={!phoneNumber || !amount}
+              onPress={() => setConfirmVisible(true)}
+              className={`items-center rounded-2xl py-4 ${
+                phoneNumber && amount ? "bg-black" : "bg-gray-300"
+              }`}
+            >
+              <Text className="font-semibold text-white">Continue</Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => setSendVisible(false)}
+              className="mt-4 items-center"
+            >
+              <Text className="text-gray-500">Cancel</Text>
+            </Pressable>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      <Modal visible={confirmVisible} transparent animationType="fade">
+        <View className="flex-1 items-center justify-center bg-black/50">
+          <View className="w-[88%] rounded-3xl bg-white p-6">
+            <Text className="mb-6 text-center text-2xl font-bold">
+              Confirm Transfer
+            </Text>
+
+            <View className="mb-6">
+              <Text className="text-gray-500">Recipient</Text>
+
+              <Text className="mb-4 text-lg font-semibold">{phoneNumber}</Text>
+
+              <Text className="text-gray-500">Amount</Text>
+
+              <Text className="text-3xl font-bold">${amount}</Text>
+            </View>
+
+            <Pressable
+              disabled={sending}
+              onPress={transfer}
+              className="items-center rounded-2xl bg-black py-4"
+            >
+              <Text className="font-semibold text-white">
+                {sending ? "Sending..." : "Confirm"}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => setConfirmVisible(false)}
+              className="mt-4 items-center"
+            >
+              <Text className="text-gray-500">Back</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
