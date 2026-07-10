@@ -1,3 +1,32 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  :root {
+    /* Light */
+    --bg-dark: 0 0% 90%;
+    --bg: 0 0% 95%;
+    --bg-light: 0 0% 100%;
+
+    --text: 0 0% 5%;
+    --text-muted: 0 0% 30%;
+
+    --border: 0 0% 50%;
+    --border-muted: 340 0% 62%;
+    --highlight: 0 0% 100%;
+  }
+
+  .dark {
+    --bg-dark: 0 0% 0%;
+    --bg: 0 0% 5%;
+    --bg-light: 0 0% 10%;
+
+    --text: 0 0% 95%;
+    --text-muted: 0 0% 70%;
+
+    --border: 0 0% 30%;
+    --border-muted: 300 0% 18%;
+    --highlight: 0 0% 60%;
+  }
+}
