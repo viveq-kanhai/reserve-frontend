@@ -1,10 +1,27 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useState } from "react";
-import { Alert, Image, KeyboardAvoidingView, Modal, Platform, Pressable, Text, TextInput, View } from "react-native";
+import * as Sharing from "expo-sharing";
+import { useEffect, useRef, useState } from "react";
+import {
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import QRCode from "react-native-qrcode-svg";
+import ViewShot from "react-native-view-shot";
 import { api } from "../../services/api";
 
 export default function UserDashboard() {
   const [data, setData] = useState<any>(null);
+  const qrRef = useRef<any>(null);
+
+  const [dashboard, setDashboard] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   const [sendVisible, setSendVisible] = useState(false);
 
@@ -14,11 +31,27 @@ export default function UserDashboard() {
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [sending, setSending] = useState(false);
 
+  const [requestVisible, setRequestVisible] = useState(false);
+
+  const [requestAmount, setRequestAmount] = useState("");
+  const [requestNote, setRequestNote] = useState("");
+  const [requestPhone, setRequestPhone] = useState("");
+
+  const [requesting, setRequesting] = useState(false);
+
+  const [qrVisible, setQrVisible] = useState(false);
+  const [qrValue, setQrValue] = useState("");
+  const [qrRequest, setQrRequest] = useState<any>(null);
+
   const allTransactions = [
     ...(data?.transactions ?? []),
     ...(data?.withdrawal_requests ?? []),
     ...(data?.payment_requests ?? []),
   ];
+
+  useEffect(() => {
+    loadDashboard();
+  }, []);
 
   useEffect(() => {
     api
@@ -28,6 +61,20 @@ export default function UserDashboard() {
   }, []);
 
   if (!data) return null;
+
+  async function loadDashboard() {
+    try {
+      setLoading(true);
+
+      const response = await api.get("/dashboard");
+
+      setDashboard(response.data);
+    } catch (error) {
+      console.log("Dashboard error:", error);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function transfer() {
     try {
@@ -55,6 +102,45 @@ export default function UserDashboard() {
       );
     } finally {
       setSending(false);
+    }
+  }
+
+  async function createPaymentRequest() {
+    try {
+      setRequesting(true);
+
+      const response = await api.post("/payment-requests", {
+        amount: requestAmount,
+        note: requestNote || null,
+        phone_number: requestPhone || null,
+      });
+
+      console.log(response.data);
+
+      const request = response.data.request;
+
+      setQrRequest(request);
+
+      setQrValue(
+        JSON.stringify({
+          type: "payment_request",
+          id: request.id,
+        }),
+      );
+
+      setRequestVisible(false);
+
+      setRequestAmount("");
+      setRequestNote("");
+      setRequestPhone("");
+
+      setQrVisible(true);
+
+      loadDashboard();
+    } catch (error: any) {
+      console.log(error.response?.data ?? error);
+    } finally {
+      setRequesting(false);
     }
   }
 
@@ -89,7 +175,10 @@ export default function UserDashboard() {
               <Text className="text-sm font-semibold text-black">Send</Text>
             </Pressable>
 
-            <Pressable className="rounded-full bg-zinc-800 px-5 py-2">
+            <Pressable
+              className="rounded-full bg-zinc-800 px-5 py-2"
+              onPress={() => setRequestVisible(true)}
+            >
               <Text className="text-sm font-semibold text-white">Request</Text>
             </Pressable>
           </View>
@@ -248,6 +337,104 @@ export default function UserDashboard() {
               className="mt-4 items-center"
             >
               <Text className="text-gray-500">Back</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={requestVisible} transparent animationType="slide">
+        <View className="flex-1 justify-end bg-black/40">
+          <View className="rounded-t-3xl bg-white p-6">
+            <Text className="mb-5 text-xl font-bold">Request Money</Text>
+
+            <TextInput
+              placeholder="Amount"
+              keyboardType="numeric"
+              value={requestAmount}
+              onChangeText={setRequestAmount}
+              className="mb-3 rounded-xl border border-gray-300 px-4 py-3"
+            />
+
+            <TextInput
+              placeholder="Phone number (optional)"
+              value={requestPhone}
+              onChangeText={setRequestPhone}
+              keyboardType="phone-pad"
+              className="mb-3 rounded-xl border border-gray-300 px-4 py-3"
+            />
+
+            <TextInput
+              placeholder="Note (optional)"
+              value={requestNote}
+              onChangeText={setRequestNote}
+              className="mb-5 rounded-xl border border-gray-300 px-4 py-3"
+            />
+
+            <Pressable
+              onPress={createPaymentRequest}
+              disabled={requesting}
+              className="rounded-xl bg-black py-4"
+            >
+              <Text className="text-center font-semibold text-white">
+                {requesting ? "Creating..." : "Create Request"}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => setRequestVisible(false)}
+              className="mt-3 py-3"
+            >
+              <Text className="text-center text-gray-500">Cancel</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={qrVisible} transparent animationType="slide">
+        <View className="flex-1 justify-end bg-black/40">
+          <View className="rounded-t-3xl bg-white p-6 pb-10">
+            <Text className="mb-5 text-center text-2xl font-bold">
+              Payment Request
+            </Text>
+
+            <ViewShot
+              ref={qrRef}
+              options={{
+                format: "png",
+                quality: 1,
+              }}
+            >
+              <View className="items-center">
+                <QRCode value={qrValue} size={220} />
+
+                <Text className="mt-5 text-xl font-bold">
+                  ${qrRequest?.amount}
+                </Text>
+
+                {qrRequest?.note && (
+                  <Text className="mt-2 text-gray-500">{qrRequest.note}</Text>
+                )}
+              </View>
+            </ViewShot>
+
+            <Pressable
+              className="mt-8 rounded-2xl bg-black py-4"
+              onPress={async () => {
+                const uri = await qrRef.current.capture();
+
+                await Sharing.shareAsync(uri);
+              }}
+            >
+              <Text className="text-center font-semibold text-white">
+                Share QR Code
+              </Text>
+            </Pressable>
+
+            <Pressable
+              className="mt-3 py-3"
+              onPress={() => setQrVisible(false)}
+            >
+              <Text className="text-center text-gray-500">Close</Text>
             </Pressable>
           </View>
         </View>
