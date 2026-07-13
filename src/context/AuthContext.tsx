@@ -42,11 +42,6 @@ export function AuthProvider({ children }: any) {
       return;
     }
 
-    if (user.role === "admin") {
-      router.replace("/(admin)/dashboard");
-      return;
-    }
-
     if (user.role === "merchant") {
       router.replace("/(merchant)/dashboard");
       return;

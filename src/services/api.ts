@@ -2,8 +2,10 @@
 import axios from "axios";
 import { getToken } from "./auth";
 
+export const API_URL = "http://192.168.100.6:8000";
+
 export const api = axios.create({
-  baseURL: "http://192.168.100.6:8000/api",
+  baseURL: `${API_URL}/api`,
 });
 
 // attach token automatically

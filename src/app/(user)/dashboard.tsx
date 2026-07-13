@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import * as Sharing from "expo-sharing";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -14,11 +15,12 @@ import {
 } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 import ViewShot from "react-native-view-shot";
-import { api } from "../../services/api";
+import { api, API_URL } from "../../services/api";
 
 export default function UserDashboard() {
   const [data, setData] = useState<any>(null);
   const qrRef = useRef<any>(null);
+  const router = useRouter();
 
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -148,10 +150,16 @@ export default function UserDashboard() {
     <View className="flex-1 bg-black">
       {/* HEADER */}
       <View className="flex-row items-center justify-between px-6 pt-14">
-        <Image
-          source={{ uri: "https://i.pravatar.cc/100" }}
-          className="h-10 w-10 rounded-full"
-        />
+        <Pressable onPress={() => router.push("/(user)/profile")}>
+          <Image
+            source={{
+              uri: data.user.pfp_path
+                ? `${API_URL}/storage/${data.user.pfp_path}`
+                : "https://i.pravatar.cc/100",
+            }}
+            className="h-10 w-10 rounded-full"
+          />
+        </Pressable>
 
         <Pressable className="h-10 w-10 items-center justify-center rounded-full bg-zinc-900">
           <Ionicons name="notifications" size={20} color="white" />
