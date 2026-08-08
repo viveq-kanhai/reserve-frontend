@@ -1,6 +1,16 @@
-import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as Sharing from "expo-sharing";
+import {
+  ArrowDownLeft,
+  ArrowLeftRight,
+  ArrowUpRight,
+  Bell,
+  Filter,
+  Plus,
+  Search,
+  Share2,
+  TrendingUp,
+} from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import {
   Alert,
@@ -9,6 +19,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   Text,
   TextInput,
   View,
@@ -16,6 +27,46 @@ import {
 import QRCode from "react-native-qrcode-svg";
 import ViewShot from "react-native-view-shot";
 import { api, API_URL } from "../../services/api";
+
+const BG = "#0B0D10";
+const SHEET_BG = "#101317";
+const SURFACE = "#15181C";
+const BORDER = "#22262B";
+const ACCENT = "#B4DE00";
+const TEXT_PRIMARY = "#EDEEF0";
+const TEXT_SECONDARY = "#8B9098";
+const TEXT_MUTED = "#54585F";
+const ERROR = "#E5484D";
+const SUCCESS = "#4CC38A";
+
+// ---- Reusable modal input, kept local to this file ----
+function ModalField({
+  value,
+  onChangeText,
+  placeholder,
+  keyboardType,
+}: {
+  value: string;
+  onChangeText: (t: string) => void;
+  placeholder: string;
+  keyboardType?: "default" | "phone-pad" | "decimal-pad" | "numeric";
+}) {
+  return (
+    <TextInput
+      placeholder={placeholder}
+      placeholderTextColor={TEXT_MUTED}
+      value={value}
+      onChangeText={onChangeText}
+      keyboardType={keyboardType ?? "default"}
+      className="mb-3 rounded-2xl border px-4 py-4 text-[15px]"
+      style={{
+        backgroundColor: SURFACE,
+        borderColor: BORDER,
+        color: TEXT_PRIMARY,
+      }}
+    />
+  );
+}
 
 export default function UserDashboard() {
   const [data, setData] = useState<any>(null);
@@ -147,7 +198,7 @@ export default function UserDashboard() {
   }
 
   return (
-    <View className="flex-1 bg-black">
+    <View className="flex-1" style={{ backgroundColor: BG }}>
       {/* HEADER */}
       <View className="flex-row items-center justify-between px-6 pt-14">
         <Pressable onPress={() => router.push("/(user)/profile")}>
@@ -157,52 +208,97 @@ export default function UserDashboard() {
                 ? `${API_URL}/storage/${data.user.pfp_path}`
                 : "https://i.pravatar.cc/100",
             }}
-            className="h-10 w-10 rounded-full"
+            className="h-10 w-10 rounded-full border"
+            style={{ borderColor: BORDER }}
           />
         </Pressable>
 
-        <Pressable className="h-10 w-10 items-center justify-center rounded-full bg-zinc-900">
-          <Ionicons name="notifications" size={20} color="white" />
+        <Pressable
+          className="h-10 w-10 items-center justify-center rounded-full border"
+          style={{ backgroundColor: SURFACE, borderColor: BORDER }}
+        >
+          <Bell size={18} color={TEXT_PRIMARY} strokeWidth={2} />
         </Pressable>
       </View>
 
       {/* TOP SECTION */}
       <View className="px-6 pt-16">
         <View className="w-2/3">
-          <Text className="text-sm text-gray-400">Total Balance</Text>
+          <Text
+            className="text-[11px] font-semibold uppercase tracking-[2px]"
+            style={{ color: TEXT_SECONDARY }}
+          >
+            Total Balance
+          </Text>
 
-          <Text className="mt-2 text-5xl font-bold text-white">
+          <Text
+            className="mt-2 text-5xl font-bold tracking-tight"
+            style={{ color: TEXT_PRIMARY }}
+          >
             ${data.user.balance}
           </Text>
 
           <View className="mt-6 flex-row gap-3">
             <Pressable
               onPress={() => setSendVisible(true)}
-              className="rounded-full bg-white px-5 py-2"
+              className="flex-row items-center gap-1.5 rounded-full px-5 py-2.5"
+              style={{ backgroundColor: ACCENT }}
             >
-              <Text className="text-sm font-semibold text-black">Send</Text>
+              <ArrowUpRight size={16} color={BG} strokeWidth={2.5} />
+              <Text className="text-sm font-semibold" style={{ color: BG }}>
+                Send
+              </Text>
             </Pressable>
 
             <Pressable
-              className="rounded-full bg-zinc-800 px-5 py-2"
+              className="flex-row items-center gap-1.5 rounded-full border px-5 py-2.5"
+              style={{ backgroundColor: SURFACE, borderColor: BORDER }}
               onPress={() => setRequestVisible(true)}
             >
-              <Text className="text-sm font-semibold text-white">Request</Text>
+              <ArrowDownLeft size={16} color={TEXT_PRIMARY} strokeWidth={2.5} />
+              <Text
+                className="text-sm font-semibold"
+                style={{ color: TEXT_PRIMARY }}
+              >
+                Request
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => {}}
+              className="h-11 w-11 items-center justify-center rounded-full border"
+              style={{ backgroundColor: SURFACE, borderColor: BORDER }}
+            >
+              <Plus size={18} color={ACCENT} strokeWidth={2.5} />
             </Pressable>
           </View>
         </View>
 
-        {/* 👇 STAT CARD NOW INSIDE FLOW */}
-        <View className="mt-8 rounded-3xl bg-zinc-900 p-6">
-          <Text className="text-xs uppercase tracking-widest text-gray-400">
+        {/* STAT CARD */}
+        <View
+          className="mt-8 rounded-3xl border p-6"
+          style={{ backgroundColor: SURFACE, borderColor: BORDER }}
+        >
+          <Text
+            className="text-xs uppercase tracking-widest"
+            style={{ color: TEXT_SECONDARY }}
+          >
             This Month
           </Text>
 
-          <Text className="mt-2 text-3xl font-bold text-white">$4,250</Text>
-
-          <Text className="mt-1 text-sm text-green-400">
-            ↑ 12.8% from last month
+          <Text
+            className="mt-2 text-3xl font-bold"
+            style={{ color: TEXT_PRIMARY }}
+          >
+            $4,250
           </Text>
+
+          <View className="mt-1 flex-row items-center gap-1">
+            <TrendingUp size={14} color={SUCCESS} strokeWidth={2.5} />
+            <Text className="text-sm font-medium" style={{ color: SUCCESS }}>
+              12.8% from last month
+            </Text>
+          </View>
         </View>
       </View>
 
@@ -210,132 +306,217 @@ export default function UserDashboard() {
       <View className="flex-1" />
 
       {/* Bottom Sheet */}
-      <View className="h-[45%] rounded-t-[32px] bg-white px-5 pt-6">
+      <View
+        className="h-[45%] rounded-t-[32px] border-t px-5 pt-6"
+        style={{ backgroundColor: SHEET_BG, borderColor: BORDER }}
+      >
         {/* HEADER ROW */}
         <View className="mb-4 flex-row items-center justify-between">
-          {/* Left: Filter */}
-          <Pressable className="h-9 w-9 items-center justify-center rounded-full bg-gray-100">
-            <Ionicons name="filter" size={18} color="black" />
+          <Pressable
+            className="h-9 w-9 items-center justify-center rounded-full border"
+            style={{ backgroundColor: SURFACE, borderColor: BORDER }}
+          >
+            <Filter size={16} color={TEXT_PRIMARY} strokeWidth={2} />
           </Pressable>
 
-          {/* Center: Title */}
-          <Text className="text-base font-semibold text-black">
+          <Text
+            className="text-base font-semibold"
+            style={{ color: TEXT_PRIMARY }}
+          >
             Transactions
           </Text>
 
-          {/* Right: Search */}
-          <Pressable className="h-9 w-9 items-center justify-center rounded-full bg-gray-100">
-            <Ionicons name="search" size={18} color="black" />
+          <Pressable
+            className="h-9 w-9 items-center justify-center rounded-full border"
+            style={{ backgroundColor: SURFACE, borderColor: BORDER }}
+          >
+            <Search size={16} color={TEXT_PRIMARY} strokeWidth={2} />
           </Pressable>
         </View>
 
         {/* LIST */}
-        <View className="flex-1">
+        <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+          {allTransactions.length === 0 && (
+            <Text
+              className="mt-8 text-center text-sm"
+              style={{ color: TEXT_MUTED }}
+            >
+              No transactions yet
+            </Text>
+          )}
+
           {allTransactions.map((item, index) => {
             const isWithdrawal = !!item.amount && item.type === "withdrawal";
             const isPayment = !!item.amount && item.type === "payment";
 
+            const Icon = isWithdrawal
+              ? ArrowUpRight
+              : isPayment
+                ? ArrowDownLeft
+                : ArrowLeftRight;
+
+            const amountColor = isWithdrawal ? ERROR : SUCCESS;
+
             return (
               <View
                 key={index}
-                className="mb-3 flex-row items-center justify-between rounded-2xl bg-gray-50 px-4 py-3"
+                className="mb-3 flex-row items-center justify-between rounded-2xl border px-4 py-3"
+                style={{ backgroundColor: SURFACE, borderColor: BORDER }}
               >
                 {/* LEFT SIDE */}
-                <View>
-                  <Text className="font-semibold text-black">
-                    {isWithdrawal
-                      ? "Withdrawal"
-                      : isPayment
-                        ? "Payment Request"
-                        : "Transaction"}
-                  </Text>
+                <View className="flex-row items-center gap-3">
+                  <View
+                    className="h-9 w-9 items-center justify-center rounded-full"
+                    style={{ backgroundColor: `${amountColor}1A` }}
+                  >
+                    <Icon size={16} color={amountColor} strokeWidth={2.5} />
+                  </View>
 
-                  <Text className="text-xs text-gray-500">
-                    {new Date(item.created_at).toLocaleDateString()}
-                  </Text>
+                  <View>
+                    <Text
+                      className="font-semibold"
+                      style={{ color: TEXT_PRIMARY }}
+                    >
+                      {isWithdrawal
+                        ? "Withdrawal"
+                        : isPayment
+                          ? "Payment Request"
+                          : "Transaction"}
+                    </Text>
+
+                    <Text className="text-xs" style={{ color: TEXT_SECONDARY }}>
+                      {new Date(item.created_at).toLocaleDateString()}
+                    </Text>
+                  </View>
                 </View>
 
                 {/* RIGHT SIDE */}
-                <Text
-                  className={`font-semibold ${
-                    isWithdrawal ? "text-red-500" : "text-green-600"
-                  }`}
-                >
+                <Text className="font-semibold" style={{ color: amountColor }}>
                   {isWithdrawal ? "-" : "+"}${item.amount}
                 </Text>
               </View>
             );
           })}
-        </View>
+        </ScrollView>
       </View>
 
+      {/* SEND MODAL */}
       <Modal visible={sendVisible} transparent animationType="slide">
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
-          className="flex-1 justify-end bg-black/40"
+          className="flex-1 justify-end"
+          style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
         >
-          <View className="rounded-t-3xl bg-white p-6 pb-10">
-            <Text className="mb-6 text-2xl font-bold">Send Points</Text>
+          <View
+            className="rounded-t-3xl border-t p-6 pb-10"
+            style={{ backgroundColor: SHEET_BG, borderColor: BORDER }}
+          >
+            <Text
+              className="mb-6 text-2xl font-bold"
+              style={{ color: TEXT_PRIMARY }}
+            >
+              Send money
+            </Text>
 
-            <TextInput
+            <ModalField
               placeholder="Recipient phone number"
               value={phoneNumber}
               onChangeText={setPhoneNumber}
               keyboardType="phone-pad"
-              className="mb-4 rounded-xl border border-gray-300 px-4 py-4"
             />
 
-            <TextInput
+            <View className="mb-2" />
+
+            <ModalField
               placeholder="Amount"
               value={amount}
               onChangeText={setAmount}
               keyboardType="decimal-pad"
-              className="mb-6 rounded-xl border border-gray-300 px-4 py-4"
             />
 
             <Pressable
               disabled={!phoneNumber || !amount}
               onPress={() => setConfirmVisible(true)}
-              className={`items-center rounded-2xl py-4 ${
-                phoneNumber && amount ? "bg-black" : "bg-gray-300"
-              }`}
+              className="mt-4 items-center rounded-2xl py-4"
+              style={{
+                backgroundColor: phoneNumber && amount ? ACCENT : BORDER,
+              }}
             >
-              <Text className="font-semibold text-white">Continue</Text>
+              <Text
+                className="font-semibold"
+                style={{ color: phoneNumber && amount ? BG : TEXT_MUTED }}
+              >
+                Continue
+              </Text>
             </Pressable>
 
             <Pressable
               onPress={() => setSendVisible(false)}
               className="mt-4 items-center"
             >
-              <Text className="text-gray-500">Cancel</Text>
+              <Text style={{ color: TEXT_SECONDARY }}>Cancel</Text>
             </Pressable>
           </View>
         </KeyboardAvoidingView>
       </Modal>
 
+      {/* CONFIRM MODAL */}
       <Modal visible={confirmVisible} transparent animationType="fade">
-        <View className="flex-1 items-center justify-center bg-black/50">
-          <View className="w-[88%] rounded-3xl bg-white p-6">
-            <Text className="mb-6 text-center text-2xl font-bold">
+        <View
+          className="flex-1 items-center justify-center"
+          style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
+        >
+          <View
+            className="w-[88%] rounded-3xl border p-6"
+            style={{ backgroundColor: SHEET_BG, borderColor: BORDER }}
+          >
+            <Text
+              className="mb-6 text-center text-2xl font-bold"
+              style={{ color: TEXT_PRIMARY }}
+            >
               Confirm Transfer
             </Text>
 
-            <View className="mb-6">
-              <Text className="text-gray-500">Recipient</Text>
+            <View
+              className="mb-6 rounded-2xl border p-4"
+              style={{ backgroundColor: SURFACE, borderColor: BORDER }}
+            >
+              <Text
+                className="text-xs uppercase tracking-widest"
+                style={{ color: TEXT_SECONDARY }}
+              >
+                Recipient
+              </Text>
 
-              <Text className="mb-4 text-lg font-semibold">{phoneNumber}</Text>
+              <Text
+                className="mb-4 mt-1 text-lg font-semibold"
+                style={{ color: TEXT_PRIMARY }}
+              >
+                {phoneNumber}
+              </Text>
 
-              <Text className="text-gray-500">Amount</Text>
+              <Text
+                className="text-xs uppercase tracking-widest"
+                style={{ color: TEXT_SECONDARY }}
+              >
+                Amount
+              </Text>
 
-              <Text className="text-3xl font-bold">${amount}</Text>
+              <Text
+                className="mt-1 text-3xl font-bold"
+                style={{ color: TEXT_PRIMARY }}
+              >
+                ${amount}
+              </Text>
             </View>
 
             <Pressable
               disabled={sending}
               onPress={transfer}
-              className="items-center rounded-2xl bg-black py-4"
+              className="items-center rounded-2xl py-4"
+              style={{ backgroundColor: sending ? `${ACCENT}80` : ACCENT }}
             >
-              <Text className="font-semibold text-white">
+              <Text className="font-semibold" style={{ color: BG }}>
                 {sending ? "Sending..." : "Confirm"}
               </Text>
             </Pressable>
@@ -344,46 +525,56 @@ export default function UserDashboard() {
               onPress={() => setConfirmVisible(false)}
               className="mt-4 items-center"
             >
-              <Text className="text-gray-500">Back</Text>
+              <Text style={{ color: TEXT_SECONDARY }}>Back</Text>
             </Pressable>
           </View>
         </View>
       </Modal>
 
+      {/* REQUEST MODAL */}
       <Modal visible={requestVisible} transparent animationType="slide">
-        <View className="flex-1 justify-end bg-black/40">
-          <View className="rounded-t-3xl bg-white p-6">
-            <Text className="mb-5 text-xl font-bold">Request Money</Text>
+        <View
+          className="flex-1 justify-end"
+          style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
+        >
+          <View
+            className="rounded-t-3xl border-t p-6"
+            style={{ backgroundColor: SHEET_BG, borderColor: BORDER }}
+          >
+            <Text
+              className="mb-5 text-xl font-bold"
+              style={{ color: TEXT_PRIMARY }}
+            >
+              Request Money
+            </Text>
 
-            <TextInput
+            <ModalField
               placeholder="Amount"
               keyboardType="numeric"
               value={requestAmount}
               onChangeText={setRequestAmount}
-              className="mb-3 rounded-xl border border-gray-300 px-4 py-3"
             />
 
-            <TextInput
+            <ModalField
               placeholder="Phone number (optional)"
               value={requestPhone}
               onChangeText={setRequestPhone}
               keyboardType="phone-pad"
-              className="mb-3 rounded-xl border border-gray-300 px-4 py-3"
             />
 
-            <TextInput
+            <ModalField
               placeholder="Note (optional)"
               value={requestNote}
               onChangeText={setRequestNote}
-              className="mb-5 rounded-xl border border-gray-300 px-4 py-3"
             />
 
             <Pressable
               onPress={createPaymentRequest}
               disabled={requesting}
-              className="rounded-xl bg-black py-4"
+              className="mt-2 rounded-2xl py-4"
+              style={{ backgroundColor: requesting ? `${ACCENT}80` : ACCENT }}
             >
-              <Text className="text-center font-semibold text-white">
+              <Text className="text-center font-semibold" style={{ color: BG }}>
                 {requesting ? "Creating..." : "Create Request"}
               </Text>
             </Pressable>
@@ -392,16 +583,28 @@ export default function UserDashboard() {
               onPress={() => setRequestVisible(false)}
               className="mt-3 py-3"
             >
-              <Text className="text-center text-gray-500">Cancel</Text>
+              <Text className="text-center" style={{ color: TEXT_SECONDARY }}>
+                Cancel
+              </Text>
             </Pressable>
           </View>
         </View>
       </Modal>
 
+      {/* QR MODAL */}
       <Modal visible={qrVisible} transparent animationType="slide">
-        <View className="flex-1 justify-end bg-black/40">
-          <View className="rounded-t-3xl bg-white p-6 pb-10">
-            <Text className="mb-5 text-center text-2xl font-bold">
+        <View
+          className="flex-1 justify-end"
+          style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
+        >
+          <View
+            className="rounded-t-3xl border-t p-6 pb-10"
+            style={{ backgroundColor: SHEET_BG, borderColor: BORDER }}
+          >
+            <Text
+              className="mb-5 text-center text-2xl font-bold"
+              style={{ color: TEXT_PRIMARY }}
+            >
               Payment Request
             </Text>
 
@@ -412,28 +615,38 @@ export default function UserDashboard() {
                 quality: 1,
               }}
             >
-              <View className="items-center">
+              <View
+                className="items-center rounded-3xl p-6"
+                style={{ backgroundColor: "#FFFFFF" }}
+              >
                 <QRCode value={qrValue} size={220} />
 
-                <Text className="mt-5 text-xl font-bold">
+                <Text
+                  className="mt-5 text-xl font-bold"
+                  style={{ color: "#0B0D10" }}
+                >
                   ${qrRequest?.amount}
                 </Text>
 
                 {qrRequest?.note && (
-                  <Text className="mt-2 text-gray-500">{qrRequest.note}</Text>
+                  <Text className="mt-2" style={{ color: "#6B7280" }}>
+                    {qrRequest.note}
+                  </Text>
                 )}
               </View>
             </ViewShot>
 
             <Pressable
-              className="mt-8 rounded-2xl bg-black py-4"
+              className="mt-8 flex-row items-center justify-center gap-2 rounded-2xl py-4"
+              style={{ backgroundColor: ACCENT }}
               onPress={async () => {
                 const uri = await qrRef.current.capture();
 
                 await Sharing.shareAsync(uri);
               }}
             >
-              <Text className="text-center font-semibold text-white">
+              <Share2 size={16} color={BG} strokeWidth={2.5} />
+              <Text className="text-center font-semibold" style={{ color: BG }}>
                 Share QR Code
               </Text>
             </Pressable>
@@ -442,7 +655,9 @@ export default function UserDashboard() {
               className="mt-3 py-3"
               onPress={() => setQrVisible(false)}
             >
-              <Text className="text-center text-gray-500">Close</Text>
+              <Text className="text-center" style={{ color: TEXT_SECONDARY }}>
+                Close
+              </Text>
             </Pressable>
           </View>
         </View>

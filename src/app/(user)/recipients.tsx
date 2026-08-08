@@ -1,4 +1,12 @@
-import { Ionicons } from "@expo/vector-icons";
+import {
+  ArrowUpRight,
+  Pencil,
+  Plus,
+  Search,
+  Star,
+  Trash2,
+  Users,
+} from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
   Alert,
@@ -15,6 +23,48 @@ import {
   View,
 } from "react-native";
 import { api } from "../../services/api";
+
+const BG = "#0B0D10";
+const SHEET_BG = "#101317";
+const SURFACE = "#15181C";
+const BORDER = "#22262B";
+const ACCENT = "#B4DE00";
+const TEXT_PRIMARY = "#EDEEF0";
+const TEXT_SECONDARY = "#8B9098";
+const TEXT_MUTED = "#54585F";
+const ERROR = "#E5484D";
+
+// ---- Reusable modal input, kept local to this file ----
+function ModalField({
+  value,
+  onChangeText,
+  placeholder,
+  keyboardType,
+  editable = true,
+}: {
+  value: string;
+  onChangeText?: (t: string) => void;
+  placeholder?: string;
+  keyboardType?: "default" | "decimal-pad";
+  editable?: boolean;
+}) {
+  return (
+    <TextInput
+      placeholder={placeholder}
+      placeholderTextColor={TEXT_MUTED}
+      value={value}
+      onChangeText={onChangeText}
+      keyboardType={keyboardType ?? "default"}
+      editable={editable}
+      className="mb-4 rounded-2xl border px-4 py-4 text-[15px]"
+      style={{
+        backgroundColor: editable ? SURFACE : "#0F1215",
+        borderColor: BORDER,
+        color: editable ? TEXT_PRIMARY : TEXT_SECONDARY,
+      }}
+    />
+  );
+}
 
 export default function Recipients() {
   const [recipients, setRecipients] = useState<any[]>([]);
@@ -135,10 +185,12 @@ export default function Recipients() {
   }
 
   return (
-    <View className="flex-1 bg-black">
+    <View className="flex-1" style={{ backgroundColor: BG }}>
       {/* Header */}
       <View className="flex-row items-center justify-between px-6 pt-14">
-        <Text className="text-3xl font-bold text-white">Recipients</Text>
+        <Text className="text-3xl font-bold" style={{ color: TEXT_PRIMARY }}>
+          Recipients
+        </Text>
 
         {/* ADD BUTTON */}
         <Pressable
@@ -147,22 +199,33 @@ export default function Recipients() {
             setNickname("");
             setModalVisible(true);
           }}
-          className="h-10 items-center justify-center rounded-full bg-white px-6"
+          className="h-10 flex-row items-center gap-1.5 rounded-full px-5"
+          style={{ backgroundColor: ACCENT }}
         >
-          <Text className="text-md font-semibold text-black">Add</Text>
+          <Plus size={16} color={BG} strokeWidth={2.5} />
+          <Text className="text-[14px] font-semibold" style={{ color: BG }}>
+            Add
+          </Text>
         </Pressable>
       </View>
 
       <View className="flex-1" />
 
       {/* Bottom Sheet */}
-      <View className="h-[72%] rounded-t-[32px] bg-white px-5 pt-6">
+      <View
+        className="h-[72%] rounded-t-[32px] border-t px-5 pt-6"
+        style={{ backgroundColor: SHEET_BG, borderColor: BORDER }}
+      >
         <View className="mb-5 flex-row items-center justify-between">
-          <Text className="text-xl font-bold text-black">Your Recipients</Text>
+          <Text className="text-xl font-bold" style={{ color: TEXT_PRIMARY }}>
+            Your Recipients
+          </Text>
 
-          {/* SEARCH ICON MOVED HERE */}
-          <Pressable className="h-9 w-9 items-center justify-center rounded-full bg-gray-100">
-            <Ionicons name="search" size={18} color="black" />
+          <Pressable
+            className="h-9 w-9 items-center justify-center rounded-full border"
+            style={{ backgroundColor: SURFACE, borderColor: BORDER }}
+          >
+            <Search size={16} color={TEXT_PRIMARY} strokeWidth={2} />
           </Pressable>
         </View>
 
@@ -180,38 +243,53 @@ export default function Recipients() {
                 setFavorite(item.is_favorite);
                 setDetailsVisible(true);
               }}
-              className="mb-3 flex-row items-center justify-between rounded-2xl bg-gray-50 p-4"
+              className="mb-3 flex-row items-center justify-between rounded-2xl border p-4"
+              style={{ backgroundColor: SURFACE, borderColor: BORDER }}
             >
               <View className="flex-row items-center">
                 <Image
                   source={{
                     uri: item.recipient.pfp_path ?? "https://i.pravatar.cc/150",
                   }}
-                  className="h-12 w-12 rounded-full"
+                  className="h-12 w-12 rounded-full border"
+                  style={{ borderColor: BORDER }}
                 />
 
                 <View className="ml-4">
-                  <Text className="font-semibold text-black">
+                  <Text
+                    className="font-semibold"
+                    style={{ color: TEXT_PRIMARY }}
+                  >
                     {item.nickname ||
                       `${item.recipient.first_name} ${item.recipient.last_name}`}
                   </Text>
 
-                  <Text className="text-gray-500">
+                  <Text style={{ color: TEXT_SECONDARY }}>
                     {item.recipient.phone_number}
                   </Text>
                 </View>
               </View>
+
+              {item.is_favorite && (
+                <Star size={16} color={ACCENT} fill={ACCENT} strokeWidth={0} />
+              )}
             </Pressable>
           )}
           ListEmptyComponent={
             <View className="mt-24 items-center">
-              <Ionicons name="people-outline" size={60} color="#9ca3af" />
+              <Users size={48} color={TEXT_MUTED} strokeWidth={1.5} />
 
-              <Text className="mt-4 text-lg font-semibold text-gray-700">
+              <Text
+                className="mt-4 text-lg font-semibold"
+                style={{ color: TEXT_PRIMARY }}
+              >
                 No recipients yet
               </Text>
 
-              <Text className="mt-2 text-center text-gray-500">
+              <Text
+                className="mt-2 text-center"
+                style={{ color: TEXT_SECONDARY }}
+              >
                 Add someone to send money faster.
               </Text>
             </View>
@@ -222,33 +300,43 @@ export default function Recipients() {
       {/* Add Recipient Modal */}
       <Modal visible={modalVisible} animationType="slide" transparent>
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <View className="flex-1 justify-end bg-black/40">
+          <View
+            className="flex-1 justify-end"
+            style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
+          >
             <KeyboardAvoidingView
               behavior={Platform.OS === "ios" ? "padding" : "height"}
             >
-              <View className="rounded-t-3xl bg-white px-6 pt-6 pb-10">
-                <Text className="mb-5 text-xl font-bold">Add Recipient</Text>
+              <View
+                className="rounded-t-3xl border-t px-6 pt-6 pb-10"
+                style={{ backgroundColor: SHEET_BG, borderColor: BORDER }}
+              >
+                <Text
+                  className="mb-5 text-xl font-bold"
+                  style={{ color: TEXT_PRIMARY }}
+                >
+                  Add Recipient
+                </Text>
 
-                <TextInput
+                <ModalField
                   placeholder="Phone Number"
                   value={phoneNumber}
                   onChangeText={setPhoneNumber}
-                  className="mb-4 rounded-xl border border-gray-200 px-4 py-4"
                 />
 
-                <TextInput
+                <ModalField
                   placeholder="Nickname (optional)"
                   value={nickname}
                   onChangeText={setNickname}
-                  className="mb-6 rounded-xl border border-gray-200 px-4 py-4"
                 />
 
                 {/* ADD BUTTON */}
                 <Pressable
                   onPress={addRecipient}
-                  className="items-center rounded-2xl bg-black py-4"
+                  className="items-center rounded-2xl py-4"
+                  style={{ backgroundColor: ACCENT }}
                 >
-                  <Text className="font-semibold text-white">
+                  <Text className="font-semibold" style={{ color: BG }}>
                     Add Recipient
                   </Text>
                 </Pressable>
@@ -258,7 +346,12 @@ export default function Recipients() {
                   onPress={() => setModalVisible(false)}
                   className="mt-3 items-center py-4"
                 >
-                  <Text className="font-semibold text-gray-500">Cancel</Text>
+                  <Text
+                    className="font-semibold"
+                    style={{ color: TEXT_SECONDARY }}
+                  >
+                    Cancel
+                  </Text>
                 </Pressable>
               </View>
             </KeyboardAvoidingView>
@@ -266,29 +359,44 @@ export default function Recipients() {
         </TouchableWithoutFeedback>
       </Modal>
 
+      {/* DETAILS MODAL */}
       <Modal visible={detailsVisible} animationType="slide" transparent>
-        <View className="flex-1 justify-end bg-black/40">
-          <View className="rounded-t-3xl bg-white p-6 pb-10">
+        <View
+          className="flex-1 justify-end"
+          style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
+        >
+          <View
+            className="rounded-t-3xl border-t p-6 pb-10"
+            style={{ backgroundColor: SHEET_BG, borderColor: BORDER }}
+          >
             <Image
               source={{
                 uri:
                   selectedRecipient?.recipient?.pfp_path ??
                   "https://i.pravatar.cc/150",
               }}
-              className="mx-auto h-24 w-24 rounded-full"
+              className="mx-auto h-24 w-24 rounded-full border"
+              style={{ borderColor: BORDER }}
             />
 
-            <Text className="mt-4 text-center text-2xl font-bold">
+            <Text
+              className="mt-4 text-center text-2xl font-bold"
+              style={{ color: TEXT_PRIMARY }}
+            >
               {selectedRecipient?.nickname ??
                 `${selectedRecipient?.recipient?.first_name} ${selectedRecipient?.recipient?.last_name}`}
             </Text>
 
-            <Text className="mt-1 text-center text-gray-500">
+            <Text
+              className="mt-1 text-center"
+              style={{ color: TEXT_SECONDARY }}
+            >
               {selectedRecipient?.recipient?.phone_number}
             </Text>
 
             <Pressable
-              className="mt-8 items-center rounded-2xl bg-black py-4"
+              className="mt-8 flex-row items-center justify-center gap-2 rounded-2xl py-4"
+              style={{ backgroundColor: ACCENT }}
               onPress={() => {
                 setDetailsVisible(false);
 
@@ -298,24 +406,31 @@ export default function Recipients() {
                 setSendVisible(true);
               }}
             >
-              <Text className="font-semibold text-white">Send Points</Text>
+              <ArrowUpRight size={16} color={BG} strokeWidth={2.5} />
+              <Text className="font-semibold" style={{ color: BG }}>
+                Send Points
+              </Text>
             </Pressable>
 
             <Pressable
-              className="mt-3 items-center rounded-2xl border border-gray-300 py-4"
+              className="mt-3 flex-row items-center justify-center gap-2 rounded-2xl border py-4"
+              style={{ backgroundColor: SURFACE, borderColor: BORDER }}
               onPress={() => {
                 setDetailsVisible(false);
                 setEditVisible(true);
               }}
             >
-              <Text>Edit Recipient</Text>
+              <Pencil size={15} color={TEXT_PRIMARY} strokeWidth={2} />
+              <Text style={{ color: TEXT_PRIMARY }}>Edit Recipient</Text>
             </Pressable>
 
             <Pressable
-              className="mt-3 items-center rounded-2xl bg-red-50 py-4"
+              className="mt-3 flex-row items-center justify-center gap-2 rounded-2xl py-4"
+              style={{ backgroundColor: "#2A1416" }}
               onPress={confirmDelete}
             >
-              <Text className="font-semibold text-red-500">
+              <Trash2 size={15} color={ERROR} strokeWidth={2} />
+              <Text className="font-semibold" style={{ color: ERROR }}>
                 Delete Recipient
               </Text>
             </Pressable>
@@ -324,94 +439,124 @@ export default function Recipients() {
               className="mt-5 items-center"
               onPress={() => setDetailsVisible(false)}
             >
-              <Text className="text-gray-500">Close</Text>
+              <Text style={{ color: TEXT_SECONDARY }}>Close</Text>
             </Pressable>
           </View>
         </View>
       </Modal>
 
+      {/* EDIT MODAL */}
       <Modal visible={editVisible} animationType="slide" transparent>
-        <View className="flex-1 justify-end bg-black/40">
-          <View className="rounded-t-3xl bg-white p-6 pb-10">
-            <Text className="mb-5 text-2xl font-bold">Edit Recipient</Text>
+        <View
+          className="flex-1 justify-end"
+          style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
+        >
+          <View
+            className="rounded-t-3xl border-t p-6 pb-10"
+            style={{ backgroundColor: SHEET_BG, borderColor: BORDER }}
+          >
+            <Text
+              className="mb-5 text-2xl font-bold"
+              style={{ color: TEXT_PRIMARY }}
+            >
+              Edit Recipient
+            </Text>
 
-            <TextInput
+            <ModalField
               value={editNickname}
               onChangeText={setEditNickname}
               placeholder="Nickname"
-              className="mb-4 rounded-xl border border-gray-300 px-4 py-4"
             />
 
             <Pressable
               onPress={() => setFavorite(!favorite)}
               className="mb-6 flex-row items-center"
             >
-              <Ionicons
-                name={favorite ? "star" : "star-outline"}
-                size={24}
-                color="#FACC15"
+              <Star
+                size={22}
+                color={favorite ? ACCENT : TEXT_MUTED}
+                fill={favorite ? ACCENT : "transparent"}
+                strokeWidth={1.5}
               />
 
-              <Text className="ml-3 text-lg">Favorite</Text>
+              <Text className="ml-3 text-lg" style={{ color: TEXT_PRIMARY }}>
+                Favorite
+              </Text>
             </Pressable>
 
             <Pressable
               onPress={updateRecipient}
-              className="items-center rounded-2xl bg-black py-4"
+              className="items-center rounded-2xl py-4"
+              style={{ backgroundColor: ACCENT }}
             >
-              <Text className="font-semibold text-white">Save Changes</Text>
+              <Text className="font-semibold" style={{ color: BG }}>
+                Save Changes
+              </Text>
             </Pressable>
 
             <Pressable
               onPress={() => setEditVisible(false)}
               className="mt-4 items-center"
             >
-              <Text className="text-gray-500">Cancel</Text>
+              <Text style={{ color: TEXT_SECONDARY }}>Cancel</Text>
             </Pressable>
           </View>
         </View>
       </Modal>
 
+      {/* SEND MODAL */}
       <Modal visible={sendVisible} animationType="slide" transparent>
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <View className="flex-1 justify-end bg-black/40">
+          <View
+            className="flex-1 justify-end"
+            style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
+          >
             <KeyboardAvoidingView
               behavior={Platform.OS === "ios" ? "padding" : "height"}
             >
-              <View className="rounded-t-3xl bg-white px-6 pt-6 pb-10">
-                <Text className="mb-6 text-2xl font-bold">Send Points</Text>
+              <View
+                className="rounded-t-3xl border-t px-6 pt-6 pb-10"
+                style={{ backgroundColor: SHEET_BG, borderColor: BORDER }}
+              >
+                <Text
+                  className="mb-6 text-2xl font-bold"
+                  style={{ color: TEXT_PRIMARY }}
+                >
+                  Send Points
+                </Text>
 
-                <Text className="mb-2 text-gray-500">Recipient</Text>
+                <Text className="mb-2" style={{ color: TEXT_SECONDARY }}>
+                  Recipient
+                </Text>
 
-                <TextInput
-                  value={phoneNumber}
-                  editable={false}
-                  className="mb-4 rounded-xl border border-gray-200 bg-gray-100 px-4 py-4"
-                />
+                <ModalField value={phoneNumber} editable={false} />
 
-                <TextInput
+                <ModalField
                   placeholder="Amount"
                   value={amount}
                   onChangeText={setAmount}
                   keyboardType="decimal-pad"
-                  className="mb-6 rounded-xl border border-gray-200 px-4 py-4"
                 />
 
                 <Pressable
                   disabled={!amount}
                   onPress={() => setConfirmVisible(true)}
-                  className={`items-center rounded-2xl py-4 ${
-                    amount ? "bg-black" : "bg-gray-300"
-                  }`}
+                  className="items-center rounded-2xl py-4"
+                  style={{ backgroundColor: amount ? ACCENT : BORDER }}
                 >
-                  <Text className="font-semibold text-white">Continue</Text>
+                  <Text
+                    className="font-semibold"
+                    style={{ color: amount ? BG : TEXT_MUTED }}
+                  >
+                    Continue
+                  </Text>
                 </Pressable>
 
                 <Pressable
                   onPress={() => setSendVisible(false)}
                   className="mt-4 items-center"
                 >
-                  <Text className="text-gray-500">Cancel</Text>
+                  <Text style={{ color: TEXT_SECONDARY }}>Cancel</Text>
                 </Pressable>
               </View>
             </KeyboardAvoidingView>
@@ -419,27 +564,63 @@ export default function Recipients() {
         </TouchableWithoutFeedback>
       </Modal>
 
+      {/* CONFIRM MODAL */}
       <Modal visible={confirmVisible} transparent animationType="fade">
-        <View className="flex-1 items-center justify-center bg-black/50">
-          <View className="w-[88%] rounded-3xl bg-white p-6">
-            <Text className="mb-6 text-center text-2xl font-bold">
+        <View
+          className="flex-1 items-center justify-center"
+          style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
+        >
+          <View
+            className="w-[88%] rounded-3xl border p-6"
+            style={{ backgroundColor: SHEET_BG, borderColor: BORDER }}
+          >
+            <Text
+              className="mb-6 text-center text-2xl font-bold"
+              style={{ color: TEXT_PRIMARY }}
+            >
               Confirm Transfer
             </Text>
 
-            <Text className="text-gray-500">Recipient</Text>
+            <View
+              className="mb-6 rounded-2xl border p-4"
+              style={{ backgroundColor: SURFACE, borderColor: BORDER }}
+            >
+              <Text
+                className="text-xs uppercase tracking-widest"
+                style={{ color: TEXT_SECONDARY }}
+              >
+                Recipient
+              </Text>
 
-            <Text className="mb-4 text-lg font-semibold">{phoneNumber}</Text>
+              <Text
+                className="mb-4 mt-1 text-lg font-semibold"
+                style={{ color: TEXT_PRIMARY }}
+              >
+                {phoneNumber}
+              </Text>
 
-            <Text className="text-gray-500">Amount</Text>
+              <Text
+                className="text-xs uppercase tracking-widest"
+                style={{ color: TEXT_SECONDARY }}
+              >
+                Amount
+              </Text>
 
-            <Text className="mb-6 text-3xl font-bold">${amount}</Text>
+              <Text
+                className="mt-1 text-3xl font-bold"
+                style={{ color: TEXT_PRIMARY }}
+              >
+                ${amount}
+              </Text>
+            </View>
 
             <Pressable
               disabled={sending}
               onPress={transfer}
-              className="items-center rounded-2xl bg-black py-4"
+              className="items-center rounded-2xl py-4"
+              style={{ backgroundColor: sending ? `${ACCENT}80` : ACCENT }}
             >
-              <Text className="font-semibold text-white">
+              <Text className="font-semibold" style={{ color: BG }}>
                 {sending ? "Sending..." : "Confirm"}
               </Text>
             </Pressable>
@@ -448,7 +629,7 @@ export default function Recipients() {
               onPress={() => setConfirmVisible(false)}
               className="mt-4 items-center"
             >
-              <Text className="text-gray-500">Back</Text>
+              <Text style={{ color: TEXT_SECONDARY }}>Back</Text>
             </Pressable>
           </View>
         </View>

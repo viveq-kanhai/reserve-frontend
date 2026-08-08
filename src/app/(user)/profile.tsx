@@ -1,22 +1,106 @@
-import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
+import {
+  Camera,
+  ChevronRight,
+  CircleHelp,
+  Lock,
+  LogOut,
+} from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
-    Alert,
-    Image,
-    KeyboardAvoidingView,
-    Linking,
-    Modal,
-    Platform,
-    Pressable,
-    ScrollView,
-    Text,
-    TextInput,
-    View,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Linking,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 import { useAuth } from "../../context/AuthContext";
 import { api, API_URL } from "../../services/api";
+
+const BG = "#0B0D10";
+const SHEET_BG = "#101317";
+const SURFACE = "#15181C";
+const BORDER = "#22262B";
+const ACCENT = "#B4DE00";
+const TEXT_PRIMARY = "#EDEEF0";
+const TEXT_SECONDARY = "#8B9098";
+const TEXT_MUTED = "#54585F";
+const ERROR = "#E5484D";
+
+// ---- Reusable modal input, kept local to this file ----
+function ModalField({
+  value,
+  onChangeText,
+  placeholder,
+}: {
+  value: string;
+  onChangeText: (t: string) => void;
+  placeholder: string;
+}) {
+  return (
+    <TextInput
+      placeholder={placeholder}
+      placeholderTextColor={TEXT_MUTED}
+      secureTextEntry
+      value={value}
+      onChangeText={onChangeText}
+      className="mb-4 rounded-2xl border px-4 py-4 text-[15px]"
+      style={{
+        backgroundColor: SURFACE,
+        borderColor: BORDER,
+        color: TEXT_PRIMARY,
+      }}
+    />
+  );
+}
+
+// ---- Reusable account row, kept local to this file ----
+function AccountRow({
+  icon: Icon,
+  label,
+  onPress,
+  tint,
+}: {
+  icon: React.ComponentType<{
+    size?: number;
+    color?: string;
+    strokeWidth?: number;
+  }>;
+  label: string;
+  onPress: () => void;
+  tint?: string;
+}) {
+  const color = tint ?? TEXT_PRIMARY;
+
+  return (
+    <Pressable
+      onPress={onPress}
+      className="flex-row items-center justify-between py-4"
+    >
+      <View className="flex-row items-center">
+        <View
+          className="h-9 w-9 items-center justify-center rounded-full"
+          style={{ backgroundColor: SURFACE }}
+        >
+          <Icon size={17} color={color} strokeWidth={2} />
+        </View>
+
+        <Text className="ml-4 text-[15px]" style={{ color }}>
+          {label}
+        </Text>
+      </View>
+
+      <ChevronRight size={18} color={TEXT_MUTED} strokeWidth={2} />
+    </Pressable>
+  );
+}
 
 export default function Profile() {
   const router = useRouter();
@@ -138,15 +222,15 @@ export default function Profile() {
 
   return (
     <>
-      <ScrollView className="flex-1 bg-bg-dark">
+      <ScrollView className="flex-1" style={{ backgroundColor: BG }}>
         {/* HEADER */}
-
         <View className="px-6 pt-16">
-          <Text className="text-4xl font-bold text-text">Profile</Text>
+          <Text className="text-4xl font-bold" style={{ color: TEXT_PRIMARY }}>
+            Profile
+          </Text>
         </View>
 
         {/* PROFILE */}
-
         <View className="items-center mt-10">
           <Pressable onPress={pickImage}>
             <Image
@@ -155,119 +239,117 @@ export default function Profile() {
                   ? `${API_URL}/storage/${user.pfp_path}`
                   : "https://i.pravatar.cc/300",
               }}
-              className="h-32 w-32 rounded-full border-4 border-border"
+              className="h-32 w-32 rounded-full border-4"
+              style={{ borderColor: BORDER }}
             />
 
-            <View className="absolute bottom-0 right-0 h-10 w-10 rounded-full bg-bg-light items-center justify-center border border-border">
-              <Ionicons name="camera" size={18} color="black" />
+            <View
+              className="absolute bottom-0 right-0 h-10 w-10 rounded-full items-center justify-center border-2"
+              style={{ backgroundColor: ACCENT, borderColor: BG }}
+            >
+              <Camera size={17} color={BG} strokeWidth={2.2} />
             </View>
           </Pressable>
 
           {uploading && (
-            <Text className="mt-3 text-text-muted">Uploading...</Text>
+            <Text className="mt-3" style={{ color: TEXT_SECONDARY }}>
+              Uploading...
+            </Text>
           )}
 
-          <Text className="mt-6 text-3xl font-bold text-text">
+          <Text
+            className="mt-6 text-3xl font-bold tracking-tight"
+            style={{ color: TEXT_PRIMARY }}
+          >
             {user.first_name} {user.last_name}
           </Text>
 
-          <Text className="mt-2 text-text-muted">{user.phone_number}</Text>
+          <Text className="mt-2" style={{ color: TEXT_SECONDARY }}>
+            {user.phone_number}
+          </Text>
         </View>
 
         {/* CARD */}
+        <View
+          className="mx-6 mt-10 mb-10 rounded-3xl border p-6"
+          style={{ backgroundColor: SHEET_BG, borderColor: BORDER }}
+        >
+          <Text
+            className="mb-2 text-xs font-semibold uppercase tracking-widest"
+            style={{ color: TEXT_SECONDARY }}
+          >
+            Account
+          </Text>
 
-        <View className="mx-6 mt-10 rounded-3xl bg-bg border border-border p-6">
-          <Text className="mb-5 text-lg font-bold text-text">Account</Text>
-
-          <Pressable
+          <AccountRow
+            icon={Lock}
+            label="Change Password"
             onPress={() => setPasswordVisible(true)}
-            className="flex-row items-center justify-between py-4"
-          >
-            <View className="flex-row items-center">
-              <Ionicons name="lock-closed" size={22} color="black" />
+          />
 
-              <Text className="ml-4 text-text">Change Password</Text>
-            </View>
+          <View className="h-px my-1" style={{ backgroundColor: BORDER }} />
 
-            <Ionicons name="chevron-forward" size={20} color="gray" />
-          </Pressable>
-
-          <View className="h-px bg-border my-2" />
-
-          <Pressable
-            className="flex-row items-center justify-between py-4"
+          <AccountRow
+            icon={CircleHelp}
+            label="Support"
             onPress={openWhatsAppSupport}
-          >
-            <View className="flex-row items-center">
-              <Ionicons name="help-circle" size={22} color="black" />
+          />
 
-              <Text className="ml-4 text-text">Support</Text>
-            </View>
+          <View className="h-px my-1" style={{ backgroundColor: BORDER }} />
 
-            <Ionicons name="chevron-forward" size={20} color="gray" />
-          </Pressable>
-
-          <View className="h-px bg-border my-2" />
-
-          <Pressable
-            className="flex-row items-center justify-between py-4"
+          <AccountRow
+            icon={LogOut}
+            label="Logout"
             onPress={logout}
-          >
-            <View className="flex-row items-center">
-              <Ionicons name="log-out-outline" size={22} color="#ef4444" />
-
-              <Text className="ml-4 text-red-500">Logout</Text>
-            </View>
-
-            <Ionicons name="chevron-forward" size={20} color="gray" />
-          </Pressable>
+            tint={ERROR}
+          />
         </View>
       </ScrollView>
 
       {/* PASSWORD MODAL */}
-
       <Modal visible={passwordVisible} animationType="slide" transparent>
         <KeyboardAvoidingView
-          className="flex-1 justify-end bg-black/40"
+          className="flex-1 justify-end"
+          style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
           behavior={Platform.OS === "ios" ? "padding" : "height"}
         >
-          <View className="rounded-t-3xl bg-bg p-6 pb-10">
-            <Text className="mb-6 text-2xl font-bold text-text">
+          <View
+            className="rounded-t-3xl border-t p-6 pb-10"
+            style={{ backgroundColor: SHEET_BG, borderColor: BORDER }}
+          >
+            <Text
+              className="mb-6 text-2xl font-bold"
+              style={{ color: TEXT_PRIMARY }}
+            >
               Change Password
             </Text>
 
-            <TextInput
+            <ModalField
               placeholder="Current Password"
-              secureTextEntry
               value={currentPassword}
               onChangeText={setCurrentPassword}
-              placeholderTextColor="#888"
-              className="mb-4 rounded-xl border border-border bg-bg-light px-4 py-4 text-text"
             />
 
-            <TextInput
+            <ModalField
               placeholder="New Password"
-              secureTextEntry
               value={password}
               onChangeText={setPassword}
-              placeholderTextColor="#888"
-              className="mb-4 rounded-xl border border-border bg-bg-light px-4 py-4 text-text"
             />
 
-            <TextInput
+            <ModalField
               placeholder="Confirm Password"
-              secureTextEntry
               value={passwordConfirmation}
               onChangeText={setPasswordConfirmation}
-              placeholderTextColor="#888"
-              className="mb-6 rounded-xl border border-border bg-bg-light px-4 py-4 text-text"
             />
 
             <Pressable
               onPress={changePassword}
-              className="rounded-2xl bg-white py-4"
+              className="rounded-2xl py-4"
+              style={{
+                backgroundColor: savingPassword ? `${ACCENT}80` : ACCENT,
+              }}
             >
-              <Text className="text-center font-semibold">
+              <Text className="text-center font-semibold" style={{ color: BG }}>
                 {savingPassword ? "Saving..." : "Save Password"}
               </Text>
             </Pressable>
@@ -276,7 +358,9 @@ export default function Profile() {
               onPress={() => setPasswordVisible(false)}
               className="mt-4 py-4"
             >
-              <Text className="text-center text-text-muted">Cancel</Text>
+              <Text className="text-center" style={{ color: TEXT_SECONDARY }}>
+                Cancel
+              </Text>
             </Pressable>
           </View>
         </KeyboardAvoidingView>
