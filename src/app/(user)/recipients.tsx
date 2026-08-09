@@ -270,7 +270,7 @@ export default function Recipients() {
                 </View>
               </View>
 
-              {item.is_favorite && (
+              {Boolean(item.is_favorite) && (
                 <Star size={16} color={ACCENT} fill={ACCENT} strokeWidth={0} />
               )}
             </Pressable>

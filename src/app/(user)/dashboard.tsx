@@ -9,11 +9,11 @@ import {
   Plus,
   Search,
   Share2,
-  TrendingUp,
 } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import {
   Alert,
+  Dimensions,
   Image,
   KeyboardAvoidingView,
   Modal,
@@ -38,6 +38,22 @@ const TEXT_SECONDARY = "#8B9098";
 const TEXT_MUTED = "#54585F";
 const ERROR = "#E5484D";
 const SUCCESS = "#4CC38A";
+
+const SCREEN_WIDTH = Dimensions.get("window").width;
+const PROMO_WIDTH = SCREEN_WIDTH - 48; // matches px-6 (24px) side padding
+const PROMO_HEIGHT = PROMO_WIDTH / 2; // 2:1 aspect ratio
+
+const PROMOS = [
+  require("../../assets/images/promotion1.png"),
+  require("../../assets/images/promotion2.png"),
+  require("../../assets/images/promotion3.png"),
+];
+
+// Whole-number, comma-formatted balance — cents are dropped for a cleaner look.
+function formatBalance(value: any) {
+  const num = Number(value) || 0;
+  return Math.trunc(num).toLocaleString("en-US");
+}
 
 // ---- Reusable modal input, kept local to this file ----
 function ModalField({
@@ -96,11 +112,29 @@ export default function UserDashboard() {
   const [qrValue, setQrValue] = useState("");
   const [qrRequest, setQrRequest] = useState<any>(null);
 
+  const [activePromo, setActivePromo] = useState(0);
+  const promoScrollRef = useRef<ScrollView>(null);
+
   const allTransactions = [
     ...(data?.transactions ?? []),
     ...(data?.withdrawal_requests ?? []),
     ...(data?.payment_requests ?? []),
   ];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActivePromo((prev) => {
+        const next = (prev + 1) % PROMOS.length;
+        promoScrollRef.current?.scrollTo({
+          x: next * PROMO_WIDTH,
+          animated: true,
+        });
+        return next;
+      });
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     loadDashboard();
@@ -222,8 +256,8 @@ export default function UserDashboard() {
       </View>
 
       {/* TOP SECTION */}
-      <View className="px-6 pt-16">
-        <View className="w-2/3">
+      <View className="px-6 pt-10">
+        <View className="w-full">
           <Text
             className="text-[11px] font-semibold uppercase tracking-[2px]"
             style={{ color: TEXT_SECONDARY }}
@@ -231,14 +265,22 @@ export default function UserDashboard() {
             Total Balance
           </Text>
 
-          <Text
-            className="mt-2 text-5xl font-bold tracking-tight"
-            style={{ color: TEXT_PRIMARY }}
-          >
-            ${data.user.balance}
-          </Text>
+          <View className="mt-2 flex-row items-end">
+            <Text
+              className="text-2xl font-semibold mb-1.5 mr-1"
+              style={{ color: TEXT_SECONDARY }}
+            >
+              $
+            </Text>
+            <Text
+              className="text-[56px] font-bold tracking-tight"
+              style={{ color: TEXT_PRIMARY, lineHeight: 58 }}
+            >
+              {formatBalance(data.user.balance)}
+            </Text>
+          </View>
 
-          <View className="mt-6 flex-row gap-3">
+          <View className="mt-5 flex-row items-center gap-3">
             <Pressable
               onPress={() => setSendVisible(true)}
               className="flex-row items-center gap-1.5 rounded-full px-5 py-2.5"
@@ -274,30 +316,49 @@ export default function UserDashboard() {
           </View>
         </View>
 
-        {/* STAT CARD */}
-        <View
-          className="mt-8 rounded-3xl border p-6"
-          style={{ backgroundColor: SURFACE, borderColor: BORDER }}
-        >
-          <Text
-            className="text-xs uppercase tracking-widest"
-            style={{ color: TEXT_SECONDARY }}
+        {/* PROMOTIONS */}
+        <View className="mt-9" style={{ position: "relative" }}>
+          <ScrollView
+            ref={promoScrollRef}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onMomentumScrollEnd={(e) => {
+              const index = Math.round(
+                e.nativeEvent.contentOffset.x / PROMO_WIDTH,
+              );
+              setActivePromo(index);
+            }}
           >
-            This Month
-          </Text>
+            {PROMOS.map((source, index) => (
+              <Image
+                key={index}
+                source={source}
+                style={{
+                  width: PROMO_WIDTH,
+                  height: PROMO_HEIGHT,
+                  borderRadius: 24,
+                }}
+                resizeMode="cover"
+              />
+            ))}
+          </ScrollView>
 
-          <Text
-            className="mt-2 text-3xl font-bold"
-            style={{ color: TEXT_PRIMARY }}
+          <View
+            className="absolute bottom-3 flex-row items-center justify-center gap-1.5 self-center rounded-full px-2.5 py-1.5"
+            style={{ backgroundColor: "rgba(0,0,0,0.35)" }}
           >
-            $4,250
-          </Text>
-
-          <View className="mt-1 flex-row items-center gap-1">
-            <TrendingUp size={14} color={SUCCESS} strokeWidth={2.5} />
-            <Text className="text-sm font-medium" style={{ color: SUCCESS }}>
-              12.8% from last month
-            </Text>
+            {PROMOS.map((_, index) => (
+              <View
+                key={index}
+                style={{
+                  height: 6,
+                  width: activePromo === index ? 18 : 6,
+                  borderRadius: 999,
+                  backgroundColor: activePromo === index ? ACCENT : "#FFFFFF80",
+                }}
+              />
+            ))}
           </View>
         </View>
       </View>
@@ -311,7 +372,7 @@ export default function UserDashboard() {
         style={{ backgroundColor: SHEET_BG, borderColor: BORDER }}
       >
         {/* HEADER ROW */}
-        <View className="mb-4 flex-row items-center justify-between">
+        <View className="mb-5 flex-row items-center justify-between">
           <Pressable
             className="h-9 w-9 items-center justify-center rounded-full border"
             style={{ backgroundColor: SURFACE, borderColor: BORDER }}
