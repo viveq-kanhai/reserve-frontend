@@ -2,12 +2,10 @@ import { useRouter } from "expo-router";
 import * as Sharing from "expo-sharing";
 import {
   ArrowDownLeft,
-  ArrowLeftRight,
   ArrowUpRight,
   Bell,
-  Filter,
+  ChevronRight,
   Plus,
-  Search,
   Share2,
 } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
@@ -42,6 +40,7 @@ const SUCCESS = "#4CC38A";
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const PROMO_WIDTH = SCREEN_WIDTH - 48; // matches px-6 (24px) side padding
 const PROMO_HEIGHT = PROMO_WIDTH / 2; // 2:1 aspect ratio
+const RECENT_ACTIVITY_LIMIT = 5;
 
 const PROMOS = [
   require("../../assets/images/promotion1.png"),
@@ -49,10 +48,14 @@ const PROMOS = [
   require("../../assets/images/promotion3.png"),
 ];
 
-// Whole-number, comma-formatted balance — cents are dropped for a cleaner look.
+// Formats the balance with comma separators and always shows two decimal places.
 function formatBalance(value: any) {
   const num = Number(value) || 0;
-  return Math.trunc(num).toLocaleString("en-US");
+  const [whole, decimals] = num.toFixed(2).split(".");
+  return {
+    whole: Number(whole).toLocaleString("en-US"),
+    decimals,
+  };
 }
 
 // ---- Reusable modal input, kept local to this file ----
@@ -116,10 +119,21 @@ export default function UserDashboard() {
   const promoScrollRef = useRef<ScrollView>(null);
 
   const allTransactions = [
-    ...(data?.transactions ?? []),
-    ...(data?.withdrawal_requests ?? []),
-    ...(data?.payment_requests ?? []),
+    ...(data?.transactions ?? []).map((t: any) => ({
+      ...t,
+      _source: "transaction",
+    })),
+    ...(data?.withdrawal_requests ?? []).map((t: any) => ({
+      ...t,
+      _source: "withdrawal_request",
+    })),
+    ...(data?.payment_requests ?? []).map((t: any) => ({
+      ...t,
+      _source: "payment_request",
+    })),
   ];
+
+  const recentActivity = allTransactions.slice(0, RECENT_ACTIVITY_LIMIT);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -208,12 +222,7 @@ export default function UserDashboard() {
 
       setQrRequest(request);
 
-      setQrValue(
-        JSON.stringify({
-          type: "payment_request",
-          id: request.id,
-        }),
-      );
+      setQrValue(response.data.qr_data.url);
 
       setRequestVisible(false);
 
@@ -233,233 +242,280 @@ export default function UserDashboard() {
 
   return (
     <View className="flex-1" style={{ backgroundColor: BG }}>
-      {/* HEADER */}
-      <View className="flex-row items-center justify-between px-6 pt-14">
-        <Pressable onPress={() => router.push("/(user)/profile")}>
-          <Image
-            source={{
-              uri: data.user.pfp_path
-                ? `${API_URL}/storage/${data.user.pfp_path}`
-                : "https://i.pravatar.cc/100",
-            }}
-            className="h-10 w-10 rounded-full border"
-            style={{ borderColor: BORDER }}
-          />
-        </Pressable>
+      <ScrollView
+        className="flex-1"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 40 }}
+      >
+        {/* HEADER */}
+        <View className="flex-row items-center justify-between px-6 pt-14">
+          <Pressable onPress={() => router.push("/(user)/profile")}>
+            <Image
+              source={{
+                uri: data.user.pfp_path
+                  ? `${API_URL}/storage/${data.user.pfp_path}`
+                  : "https://i.pravatar.cc/100",
+              }}
+              className="h-10 w-10 rounded-full border"
+              style={{ borderColor: BORDER }}
+            />
+          </Pressable>
 
-        <Pressable
-          className="h-10 w-10 items-center justify-center rounded-full border"
-          style={{ backgroundColor: SURFACE, borderColor: BORDER }}
-        >
-          <Bell size={18} color={TEXT_PRIMARY} strokeWidth={2} />
-        </Pressable>
-      </View>
-
-      {/* TOP SECTION */}
-      <View className="px-6 pt-10">
-        <View className="w-full">
-          <Text
-            className="text-[11px] font-semibold uppercase tracking-[2px]"
-            style={{ color: TEXT_SECONDARY }}
+          <Pressable
+            className="h-10 w-10 items-center justify-center rounded-full border"
+            style={{ backgroundColor: SURFACE, borderColor: BORDER }}
           >
-            Total Balance
-          </Text>
+            <Bell size={18} color={TEXT_PRIMARY} strokeWidth={2} />
+          </Pressable>
+        </View>
 
-          <View className="mt-2 flex-row items-end">
+        {/* TOP SECTION */}
+        <View className="px-6 pt-10">
+          <View className="w-full">
             <Text
-              className="text-2xl font-semibold mb-1.5 mr-1"
+              className="text-[11px] font-semibold uppercase tracking-[2px]"
               style={{ color: TEXT_SECONDARY }}
             >
-              $
+              Total Balance
             </Text>
-            <Text
-              className="text-[56px] font-bold tracking-tight"
-              style={{ color: TEXT_PRIMARY, lineHeight: 58 }}
-            >
-              {formatBalance(data.user.balance)}
-            </Text>
-          </View>
 
-          <View className="mt-5 flex-row items-center gap-3">
-            <Pressable
-              onPress={() => setSendVisible(true)}
-              className="flex-row items-center gap-1.5 rounded-full px-5 py-2.5"
-              style={{ backgroundColor: ACCENT }}
-            >
-              <ArrowUpRight size={16} color={BG} strokeWidth={2.5} />
-              <Text className="text-sm font-semibold" style={{ color: BG }}>
-                Send
-              </Text>
-            </Pressable>
-
-            <Pressable
-              className="flex-row items-center gap-1.5 rounded-full border px-5 py-2.5"
-              style={{ backgroundColor: SURFACE, borderColor: BORDER }}
-              onPress={() => setRequestVisible(true)}
-            >
-              <ArrowDownLeft size={16} color={TEXT_PRIMARY} strokeWidth={2.5} />
+            <View className="mt-2 flex-row items-end">
               <Text
-                className="text-sm font-semibold"
-                style={{ color: TEXT_PRIMARY }}
+                className="text-2xl font-semibold mb-1.5 mr-1"
+                style={{ color: TEXT_SECONDARY }}
               >
-                Request
+                $
               </Text>
-            </Pressable>
+              <Text
+                className="text-[56px] font-bold tracking-tight"
+                style={{ color: TEXT_PRIMARY, lineHeight: 58 }}
+              >
+                {formatBalance(data.user.balance).whole}
+              </Text>
+              <Text
+                className="text-2xl font-semibold mb-1.5 ml-0.5"
+                style={{ color: TEXT_SECONDARY }}
+              >
+                .{formatBalance(data.user.balance).decimals}
+              </Text>
+            </View>
 
-            <Pressable
-              onPress={() => {}}
-              className="h-11 w-11 items-center justify-center rounded-full border"
-              style={{ backgroundColor: SURFACE, borderColor: BORDER }}
-            >
-              <Plus size={18} color={ACCENT} strokeWidth={2.5} />
-            </Pressable>
-          </View>
-        </View>
+            <View className="mt-5 flex-row items-center gap-3">
+              <Pressable
+                onPress={() => setSendVisible(true)}
+                className="flex-row items-center gap-1.5 rounded-full px-5 py-2.5"
+                style={{ backgroundColor: ACCENT }}
+              >
+                <ArrowUpRight size={16} color={BG} strokeWidth={2.5} />
+                <Text className="text-sm font-semibold" style={{ color: BG }}>
+                  Send
+                </Text>
+              </Pressable>
 
-        {/* PROMOTIONS */}
-        <View className="mt-9" style={{ position: "relative" }}>
-          <ScrollView
-            ref={promoScrollRef}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            onMomentumScrollEnd={(e) => {
-              const index = Math.round(
-                e.nativeEvent.contentOffset.x / PROMO_WIDTH,
-              );
-              setActivePromo(index);
-            }}
-          >
-            {PROMOS.map((source, index) => (
-              <Image
-                key={index}
-                source={source}
-                style={{
-                  width: PROMO_WIDTH,
-                  height: PROMO_HEIGHT,
-                  borderRadius: 24,
-                }}
-                resizeMode="cover"
-              />
-            ))}
-          </ScrollView>
+              <Pressable
+                className="flex-row items-center gap-1.5 rounded-full border px-5 py-2.5"
+                style={{ backgroundColor: SURFACE, borderColor: BORDER }}
+                onPress={() => setRequestVisible(true)}
+              >
+                <ArrowDownLeft
+                  size={16}
+                  color={TEXT_PRIMARY}
+                  strokeWidth={2.5}
+                />
+                <Text
+                  className="text-sm font-semibold"
+                  style={{ color: TEXT_PRIMARY }}
+                >
+                  Request
+                </Text>
+              </Pressable>
 
-          <View
-            className="absolute bottom-3 flex-row items-center justify-center gap-1.5 self-center rounded-full px-2.5 py-1.5"
-            style={{ backgroundColor: "rgba(0,0,0,0.35)" }}
-          >
-            {PROMOS.map((_, index) => (
-              <View
-                key={index}
-                style={{
-                  height: 6,
-                  width: activePromo === index ? 18 : 6,
-                  borderRadius: 999,
-                  backgroundColor: activePromo === index ? ACCENT : "#FFFFFF80",
-                }}
-              />
-            ))}
-          </View>
-        </View>
-      </View>
-
-      {/* Push bottom sheet down */}
-      <View className="flex-1" />
-
-      {/* Bottom Sheet */}
-      <View
-        className="h-[45%] rounded-t-[32px] border-t px-5 pt-6"
-        style={{ backgroundColor: SHEET_BG, borderColor: BORDER }}
-      >
-        {/* HEADER ROW */}
-        <View className="mb-5 flex-row items-center justify-between">
-          <Pressable
-            className="h-9 w-9 items-center justify-center rounded-full border"
-            style={{ backgroundColor: SURFACE, borderColor: BORDER }}
-          >
-            <Filter size={16} color={TEXT_PRIMARY} strokeWidth={2} />
-          </Pressable>
-
-          <Text
-            className="text-base font-semibold"
-            style={{ color: TEXT_PRIMARY }}
-          >
-            Transactions
-          </Text>
-
-          <Pressable
-            className="h-9 w-9 items-center justify-center rounded-full border"
-            style={{ backgroundColor: SURFACE, borderColor: BORDER }}
-          >
-            <Search size={16} color={TEXT_PRIMARY} strokeWidth={2} />
-          </Pressable>
-        </View>
-
-        {/* LIST */}
-        <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-          {allTransactions.length === 0 && (
-            <Text
-              className="mt-8 text-center text-sm"
-              style={{ color: TEXT_MUTED }}
-            >
-              No transactions yet
-            </Text>
-          )}
-
-          {allTransactions.map((item, index) => {
-            const isWithdrawal = !!item.amount && item.type === "withdrawal";
-            const isPayment = !!item.amount && item.type === "payment";
-
-            const Icon = isWithdrawal
-              ? ArrowUpRight
-              : isPayment
-                ? ArrowDownLeft
-                : ArrowLeftRight;
-
-            const amountColor = isWithdrawal ? ERROR : SUCCESS;
-
-            return (
-              <View
-                key={index}
-                className="mb-3 flex-row items-center justify-between rounded-2xl border px-4 py-3"
+              <Pressable
+                onPress={() => {}}
+                className="h-11 w-11 items-center justify-center rounded-full border"
                 style={{ backgroundColor: SURFACE, borderColor: BORDER }}
               >
-                {/* LEFT SIDE */}
-                <View className="flex-row items-center gap-3">
-                  <View
-                    className="h-9 w-9 items-center justify-center rounded-full"
-                    style={{ backgroundColor: `${amountColor}1A` }}
-                  >
-                    <Icon size={16} color={amountColor} strokeWidth={2.5} />
-                  </View>
+                <Plus size={18} color={ACCENT} strokeWidth={2.5} />
+              </Pressable>
+            </View>
+          </View>
 
-                  <View>
-                    <Text
-                      className="font-semibold"
-                      style={{ color: TEXT_PRIMARY }}
-                    >
-                      {isWithdrawal
-                        ? "Withdrawal"
-                        : isPayment
-                          ? "Payment Request"
-                          : "Transaction"}
-                    </Text>
+          {/* PROMOTIONS */}
+          <View className="mt-9" style={{ position: "relative" }}>
+            <ScrollView
+              ref={promoScrollRef}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onMomentumScrollEnd={(e) => {
+                const index = Math.round(
+                  e.nativeEvent.contentOffset.x / PROMO_WIDTH,
+                );
+                setActivePromo(index);
+              }}
+            >
+              {PROMOS.map((source, index) => (
+                <Image
+                  key={index}
+                  source={source}
+                  style={{
+                    width: PROMO_WIDTH,
+                    height: PROMO_HEIGHT,
+                    borderRadius: 24,
+                  }}
+                  resizeMode="cover"
+                />
+              ))}
+            </ScrollView>
 
-                    <Text className="text-xs" style={{ color: TEXT_SECONDARY }}>
-                      {new Date(item.created_at).toLocaleDateString()}
-                    </Text>
-                  </View>
-                </View>
+            <View
+              className="absolute bottom-3 flex-row items-center justify-center gap-1.5 self-center rounded-full px-2.5 py-1.5"
+              style={{ backgroundColor: "rgba(0,0,0,0.35)" }}
+            >
+              {PROMOS.map((_, index) => (
+                <View
+                  key={index}
+                  style={{
+                    height: 6,
+                    width: activePromo === index ? 18 : 6,
+                    borderRadius: 999,
+                    backgroundColor:
+                      activePromo === index ? ACCENT : "#FFFFFF80",
+                  }}
+                />
+              ))}
+            </View>
+          </View>
 
-                {/* RIGHT SIDE */}
-                <Text className="font-semibold" style={{ color: amountColor }}>
-                  {isWithdrawal ? "-" : "+"}${item.amount}
+          {/* RECENT ACTIVITY */}
+          <View className="mt-9">
+            <View className="mb-4 flex-row items-center justify-between">
+              <Text
+                className="text-lg font-bold"
+                style={{ color: TEXT_PRIMARY }}
+              >
+                Recent Activity
+              </Text>
+
+              {/* NOTE: /(user)/transactions doesn't exist yet — build that
+                  screen, then this link is ready to go. */}
+              <Pressable
+                onPress={() => router.push("/(user)/transactions" as any)}
+                className="flex-row items-center gap-0.5"
+                hitSlop={8}
+              >
+                <Text
+                  className="text-sm font-medium"
+                  style={{ color: TEXT_SECONDARY }}
+                >
+                  See all
+                </Text>
+                <ChevronRight
+                  size={16}
+                  color={TEXT_SECONDARY}
+                  strokeWidth={2}
+                />
+              </Pressable>
+            </View>
+
+            {recentActivity.length === 0 && (
+              <View
+                className="rounded-2xl border py-8 items-center"
+                style={{ backgroundColor: SURFACE, borderColor: BORDER }}
+              >
+                <Text className="text-sm" style={{ color: TEXT_MUTED }}>
+                  No transactions yet
                 </Text>
               </View>
-            );
-          })}
-        </ScrollView>
-      </View>
+            )}
+
+            {recentActivity.map((item, index) => {
+              const isTransaction = item._source === "transaction";
+              const isWithdrawalRequest = item._source === "withdrawal_request";
+
+              const isOutgoing = isTransaction
+                ? item.direction === "sent"
+                : isWithdrawalRequest
+                  ? true
+                  : false;
+
+              const Icon = isOutgoing ? ArrowUpRight : ArrowDownLeft;
+              const amountColor = isOutgoing ? ERROR : SUCCESS;
+
+              let title = "Transaction";
+
+              if (isTransaction) {
+                if (item.counterparty) {
+                  const counterpartyLabel =
+                    item.counterparty.name?.trim() ||
+                    item.counterparty.phone_number ||
+                    "Unknown";
+
+                  if (item.type === "request_payment") {
+                    title =
+                      item.direction === "sent"
+                        ? `You paid ${counterpartyLabel}'s request`
+                        : `Request paid by ${counterpartyLabel}`;
+                  } else {
+                    title =
+                      item.direction === "sent"
+                        ? `Sent to ${counterpartyLabel}`
+                        : `Received from ${counterpartyLabel}`;
+                  }
+                } else {
+                  title = String(item.type ?? "Transaction")
+                    .replace(/_/g, " ")
+                    .replace(/\b\w/g, (c: string) => c.toUpperCase());
+                }
+              } else if (isWithdrawalRequest) {
+                title = "Withdrawal";
+              } else {
+                title = "Payment Request";
+              }
+
+              return (
+                <View
+                  key={index}
+                  className="mb-3 flex-row items-center justify-between rounded-2xl border px-4 py-3"
+                  style={{ backgroundColor: SURFACE, borderColor: BORDER }}
+                >
+                  <View className="flex-row items-center gap-3">
+                    <View
+                      className="h-9 w-9 items-center justify-center rounded-full"
+                      style={{ backgroundColor: `${amountColor}1A` }}
+                    >
+                      <Icon size={16} color={amountColor} strokeWidth={2.5} />
+                    </View>
+
+                    <View>
+                      <Text
+                        className="font-semibold"
+                        style={{ color: TEXT_PRIMARY }}
+                      >
+                        {title}
+                      </Text>
+
+                      <Text
+                        className="text-xs"
+                        style={{ color: TEXT_SECONDARY }}
+                      >
+                        {new Date(item.created_at).toLocaleDateString()}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <Text
+                    className="font-semibold"
+                    style={{ color: amountColor }}
+                  >
+                    {isOutgoing ? "-" : "+"}${item.amount}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+      </ScrollView>
 
       {/* SEND MODAL */}
       <Modal visible={sendVisible} transparent animationType="slide">

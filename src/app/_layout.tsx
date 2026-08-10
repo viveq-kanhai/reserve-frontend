@@ -5,6 +5,8 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import "../../global.css";
 import { AuthProvider } from "../context/AuthContext";
 
+const BG = "#0B0D10";
+
 function ThemeProvider({ children }: { children: React.ReactNode }) {
   const { setColorScheme } = useColorScheme();
 
@@ -17,10 +19,20 @@ function ThemeProvider({ children }: { children: React.ReactNode }) {
 
 export default function RootLayout() {
   return (
-    <SafeAreaProvider>
+    <SafeAreaProvider style={{ backgroundColor: BG }}>
       <ThemeProvider>
         <AuthProvider>
-          <Stack screenOptions={{ headerShown: false }} />
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: BG },
+            }}
+          >
+            <Stack.Screen
+              name="payment-requests/[id]"
+              options={{ headerShown: false }}
+            />
+          </Stack>
         </AuthProvider>
       </ThemeProvider>
     </SafeAreaProvider>

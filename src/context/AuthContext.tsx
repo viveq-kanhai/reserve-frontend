@@ -1,5 +1,5 @@
 // src/context/AuthContext.tsx
-import { router } from "expo-router";
+import { router, usePathname } from "expo-router";
 import { createContext, useContext, useEffect, useState } from "react";
 import { api } from "../services/api";
 import { deleteToken, getToken, saveToken } from "../services/auth";
@@ -29,6 +29,7 @@ const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 export function AuthProvider({ children }: any) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const pathname = usePathname();
 
   useEffect(() => {
     bootstrap();
@@ -42,12 +43,20 @@ export function AuthProvider({ children }: any) {
       return;
     }
 
-    if (user.role === "merchant") {
-      router.replace("/(merchant)/dashboard");
+    const homeRoute =
+      user.role === "merchant" ? "/(merchant)/dashboard" : "/(user)/dashboard";
+
+    // A deep link (e.g. a scanned payment-request QR) lands here with nothing
+    // else in the stack — put the dashboard underneath first, then re-push
+    // this screen on top, so it renders as a real modal over a real screen
+    // instead of a blank white background, and "Close" has somewhere to go back to.
+    if (pathname.startsWith("/payment-requests")) {
+      router.replace(homeRoute);
+      router.push(pathname as any);
       return;
     }
 
-    router.replace("/(user)/dashboard");
+    router.replace(homeRoute);
   }, [user, loading]);
 
   async function bootstrap() {
