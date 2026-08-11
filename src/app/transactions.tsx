@@ -1,25 +1,17 @@
 import { useRouter } from "expo-router";
-import {
-    ArrowDownLeft,
-    ArrowUpRight,
-    Check,
-    ChevronLeft,
-    Search,
-    User,
-    X,
-} from "lucide-react-native";
+import { Check, ChevronLeft, Search, User, X } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
 import {
-    ActivityIndicator,
-    FlatList,
-    Modal,
-    Pressable,
-    Text,
-    TextInput,
-    View,
+  ActivityIndicator,
+  FlatList,
+  Modal,
+  Pressable,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 import QRCode from "react-native-qrcode-svg";
-import { api } from "../../services/api";
+import { api } from "../services/api";
 
 const SHEET_BG = "#101317";
 const BG = "#0B0D10";
@@ -42,6 +34,26 @@ const FILTERS = [
 
 function prettify(value: string) {
   return value.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function getInitials(item: any, title: string) {
+  const source =
+    item.counterparty?.name?.trim() || item.counterparty?.phone_number || title;
+  const words = source.split(/\s+/).filter(Boolean);
+  if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
+  return source.slice(0, 2).toUpperCase();
+}
+
+function getDateGroup(dateString: string) {
+  const date = new Date(dateString);
+  const now = new Date();
+  const startOfDay = (d: Date) =>
+    new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const diffDays = Math.round((startOfDay(now) - startOfDay(date)) / 86400000);
+
+  if (diffDays <= 0) return "Today";
+  if (diffDays === 1) return "Yesterday";
+  return "Earlier";
 }
 
 function buildRowInfo(item: any) {
@@ -107,7 +119,6 @@ export default function TransactionsScreen() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState("all");
-  const [searchVisible, setSearchVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
   const [detailVisible, setDetailVisible] = useState(false);
@@ -266,63 +277,67 @@ export default function TransactionsScreen() {
     });
   }, [transactions, searchQuery]);
 
+  // Inserts date-header pseudo-rows into a flat array so a single FlatList
+  // (still driving the existing onEndReached pagination) can render grouped
+  // sections without switching to SectionList.
+  const groupedData = useMemo(() => {
+    const groups: Record<string, any[]> = {};
+    const order = ["Today", "Yesterday", "Earlier"];
+
+    for (const item of visibleTransactions) {
+      const group = getDateGroup(item.created_at);
+      if (!groups[group]) groups[group] = [];
+      groups[group].push(item);
+    }
+
+    const data: any[] = [];
+    for (const label of order) {
+      if (groups[label]?.length) {
+        data.push({ _isHeader: true, label });
+        data.push(...groups[label]);
+      }
+    }
+    return data;
+  }, [visibleTransactions]);
+
   return (
     <View className="flex-1" style={{ backgroundColor: BG }}>
       {/* HEADER */}
-      <View className="flex-row items-center justify-between px-6 pt-14 pb-4">
-        <View className="flex-row items-center">
-          <Pressable
-            onPress={() => router.back()}
-            className="h-9 w-9 items-center justify-center rounded-full border"
-            style={{ backgroundColor: SURFACE, borderColor: BORDER }}
-            hitSlop={8}
-          >
-            <ChevronLeft size={18} color={TEXT_PRIMARY} strokeWidth={2.2} />
-          </Pressable>
-
-          <Text
-            className="ml-4 text-2xl font-bold"
-            style={{ color: TEXT_PRIMARY }}
-          >
-            Transactions
-          </Text>
-        </View>
-
+      <View className="flex-row items-center px-6 pt-14 pb-4">
         <Pressable
-          onPress={() => setSearchVisible((v) => !v)}
+          onPress={() => router.back()}
           className="h-9 w-9 items-center justify-center rounded-full border"
-          style={{
-            backgroundColor: searchVisible ? ACCENT : SURFACE,
-            borderColor: searchVisible ? ACCENT : BORDER,
-          }}
+          style={{ backgroundColor: SURFACE, borderColor: BORDER }}
           hitSlop={8}
         >
-          <Search
-            size={16}
-            color={searchVisible ? BG : TEXT_PRIMARY}
-            strokeWidth={2}
-          />
+          <ChevronLeft size={18} color={TEXT_PRIMARY} strokeWidth={2.2} />
         </Pressable>
+
+        <Text
+          className="ml-4 text-2xl font-bold"
+          style={{ color: TEXT_PRIMARY }}
+        >
+          Transactions
+        </Text>
       </View>
 
-      {/* SEARCH */}
-      {searchVisible && (
-        <View className="px-6 pb-4">
+      {/* SEARCH — always visible */}
+      <View className="px-6 pb-4">
+        <View
+          className="flex-row items-center gap-2.5 rounded-2xl border px-4"
+          style={{ backgroundColor: SURFACE, borderColor: BORDER, height: 46 }}
+        >
+          <Search size={16} color={TEXT_MUTED} strokeWidth={2} />
           <TextInput
             value={searchQuery}
             onChangeText={setSearchQuery}
-            placeholder="Search loaded transactions"
+            placeholder="Search transactions"
             placeholderTextColor={TEXT_MUTED}
-            autoFocus
-            className="rounded-2xl border px-4 py-3 text-[15px]"
-            style={{
-              backgroundColor: SURFACE,
-              borderColor: BORDER,
-              color: TEXT_PRIMARY,
-            }}
+            className="flex-1 text-[14px]"
+            style={{ color: TEXT_PRIMARY }}
           />
         </View>
-      )}
+      </View>
 
       {/* FILTER CHIPS */}
       <View className="pb-2">
@@ -367,8 +382,12 @@ export default function TransactionsScreen() {
         </View>
       ) : (
         <FlatList
-          data={visibleTransactions}
-          keyExtractor={(item, index) => `${item._source}-${item.id}-${index}`}
+          data={groupedData}
+          keyExtractor={(item, index) =>
+            item._isHeader
+              ? `header-${item.label}-${index}`
+              : `${item._source}-${item.id}-${index}`
+          }
           contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 40 }}
           showsVerticalScrollIndicator={false}
           onEndReachedThreshold={0.4}
@@ -387,35 +406,52 @@ export default function TransactionsScreen() {
               </View>
             ) : null
           }
-          renderItem={({ item, index }) => {
-            const { title, subtitle, settled, isOutgoing } = buildRowInfo(item);
+          renderItem={({ item }) => {
+            if (item._isHeader) {
+              return (
+                <Text
+                  className="text-xs font-semibold uppercase tracking-wider mt-2 mb-1.5"
+                  style={{ color: TEXT_MUTED }}
+                >
+                  {item.label}
+                </Text>
+              );
+            }
 
+            const { title, subtitle, settled, isOutgoing } = buildRowInfo(item);
+            const initials = getInitials(item, title);
+
+            // Received = accent green, sent = neutral light (not red) —
+            // matches the reference design's convention rather than the
+            // red/green scheme used elsewhere in the app so far.
             const amountColor = !settled
               ? TEXT_MUTED
               : isOutgoing
-                ? ERROR
-                : SUCCESS;
+                ? TEXT_PRIMARY
+                : ACCENT;
 
-            const Icon = isOutgoing ? ArrowUpRight : ArrowDownLeft;
-            const isLast = index === visibleTransactions.length - 1;
             const tappable = isRowTappable(item);
 
             return (
               <Pressable
                 onPress={() => openDetail(item)}
                 disabled={!tappable}
-                className="flex-row items-center justify-between py-4"
-                style={{
-                  borderBottomWidth: isLast ? 0 : 1,
-                  borderBottomColor: BORDER,
-                }}
+                className="flex-row items-center justify-between py-2.5"
               >
                 <View className="flex-row items-center gap-3 flex-1 pr-3">
-                  <Icon
-                    size={18}
-                    color={settled ? amountColor : TEXT_MUTED}
-                    strokeWidth={2.2}
-                  />
+                  <View
+                    className="h-[38px] w-[38px] items-center justify-center rounded-full border"
+                    style={{ backgroundColor: SURFACE, borderColor: BORDER }}
+                  >
+                    <Text
+                      className="text-[13px] font-bold"
+                      style={{
+                        color: settled && !isOutgoing ? ACCENT : TEXT_SECONDARY,
+                      }}
+                    >
+                      {initials}
+                    </Text>
+                  </View>
 
                   <View className="flex-1">
                     <Text

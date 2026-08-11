@@ -4,27 +4,28 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   Bell,
-  ChevronRight,
   Plus,
+  Settings,
   Share2,
 } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import {
   Alert,
-  Dimensions,
   Image,
-  KeyboardAvoidingView,
+  Keyboard,
   Modal,
   Platform,
   Pressable,
   ScrollView,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from "react-native";
 import QRCode from "react-native-qrcode-svg";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import ViewShot from "react-native-view-shot";
-import { api, API_URL } from "../../services/api";
+import { api } from "../../services/api";
 
 const BG = "#0B0D10";
 const SHEET_BG = "#101317";
@@ -37,10 +38,7 @@ const TEXT_MUTED = "#54585F";
 const ERROR = "#E5484D";
 const SUCCESS = "#4CC38A";
 
-const SCREEN_WIDTH = Dimensions.get("window").width;
-const PROMO_WIDTH = SCREEN_WIDTH - 48; // matches px-6 (24px) side padding
-const PROMO_HEIGHT = PROMO_WIDTH / 2; // 2:1 aspect ratio
-const RECENT_ACTIVITY_LIMIT = 5;
+const SCREEN_PADDING = 20; // matches the px-5 side padding on the card/promo section
 
 const PROMOS = [
   require("../../assets/images/promotion1.png"),
@@ -56,6 +54,94 @@ function formatBalance(value: any) {
     whole: Number(whole).toLocaleString("en-US"),
     decimals,
   };
+}
+
+function getGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 18) return "Good afternoon";
+  return "Good evening";
+}
+
+function prettify(value: string) {
+  return value.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+// ---- Recent Activity row logic — kept local to this file, mirrors the
+// same conventions used on the full Transactions screen ----
+function buildRowInfo(item: any) {
+  const counterpartyLabel = item.counterparty
+    ? item.counterparty.name?.trim() || item.counterparty.phone_number
+    : null;
+
+  if (item._source === "transaction") {
+    let title: string;
+
+    if (item.type === "request_payment" && counterpartyLabel) {
+      title =
+        item.direction === "sent"
+          ? `You paid ${counterpartyLabel}'s request`
+          : `Payment request paid by ${counterpartyLabel}`;
+    } else if (counterpartyLabel) {
+      title =
+        item.direction === "sent"
+          ? `Sent to ${counterpartyLabel}`
+          : `Received from ${counterpartyLabel}`;
+    } else {
+      title = prettify(item.type ?? "Transaction");
+    }
+
+    return { title, settled: true, isOutgoing: item.direction === "sent" };
+  }
+
+  if (item._source === "withdrawal_request") {
+    return { title: "Withdrawal", settled: false, isOutgoing: true };
+  }
+
+  const title = !item.direction
+    ? "Open payment request"
+    : item.direction === "sent"
+      ? `Payment request from ${counterpartyLabel ?? "someone"}`
+      : `You requested from ${counterpartyLabel ?? "someone"}`;
+
+  return { title, settled: false, isOutgoing: item.direction === "sent" };
+}
+
+function getInitials(item: any, title: string) {
+  const source =
+    item.counterparty?.name?.trim() || item.counterparty?.phone_number || title;
+  const words = source.split(/\s+/).filter(Boolean);
+  if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
+  return source.slice(0, 2).toUpperCase();
+}
+
+// Tracks the real keyboard height via native events instead of relying on
+// KeyboardAvoidingView's automatic behavior — which is unreliable inside
+// React Native's <Modal>, since Modal renders in its own native window and
+// often doesn't receive proper keyboard-frame data (especially on Android).
+function useKeyboardHeight() {
+  const [height, setHeight] = useState(0);
+
+  useEffect(() => {
+    const showEvent =
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent =
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      setHeight(e.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setHeight(0);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  return height;
 }
 
 // ---- Reusable modal input, kept local to this file ----
@@ -91,6 +177,14 @@ export default function UserDashboard() {
   const [data, setData] = useState<any>(null);
   const qrRef = useRef<any>(null);
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const keyboardHeight = useKeyboardHeight();
+
+  const { width: screenWidth } = useWindowDimensions();
+  const promoWidth = screenWidth - SCREEN_PADDING * 2;
+  const promoHeight = promoWidth / 2; // 2:1 aspect ratio
+
+  const [notifOpen, setNotifOpen] = useState(false);
 
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -118,29 +212,12 @@ export default function UserDashboard() {
   const [activePromo, setActivePromo] = useState(0);
   const promoScrollRef = useRef<ScrollView>(null);
 
-  const allTransactions = [
-    ...(data?.transactions ?? []).map((t: any) => ({
-      ...t,
-      _source: "transaction",
-    })),
-    ...(data?.withdrawal_requests ?? []).map((t: any) => ({
-      ...t,
-      _source: "withdrawal_request",
-    })),
-    ...(data?.payment_requests ?? []).map((t: any) => ({
-      ...t,
-      _source: "payment_request",
-    })),
-  ];
-
-  const recentActivity = allTransactions.slice(0, RECENT_ACTIVITY_LIMIT);
-
   useEffect(() => {
     const interval = setInterval(() => {
       setActivePromo((prev) => {
         const next = (prev + 1) % PROMOS.length;
         promoScrollRef.current?.scrollTo({
-          x: next * PROMO_WIDTH,
+          x: next * promoWidth,
           animated: true,
         });
         return next;
@@ -148,7 +225,7 @@ export default function UserDashboard() {
     }, 4000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [promoWidth]);
 
   useEffect(() => {
     loadDashboard();
@@ -162,6 +239,26 @@ export default function UserDashboard() {
   }, []);
 
   if (!data) return null;
+
+  const recentActivity = [
+    ...(data?.transactions ?? []).map((t: any) => ({
+      ...t,
+      _source: "transaction",
+    })),
+    ...(data?.withdrawal_requests ?? []).map((t: any) => ({
+      ...t,
+      _source: "withdrawal_request",
+    })),
+    ...(data?.payment_requests ?? []).map((t: any) => ({
+      ...t,
+      _source: "payment_request",
+    })),
+  ]
+    .sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    )
+    .slice(0, 5);
 
   async function loadDashboard() {
     try {
@@ -249,28 +346,66 @@ export default function UserDashboard() {
       >
         {/* HEADER */}
         <View className="flex-row items-center justify-between px-6 pt-14">
-          <Pressable onPress={() => router.push("/(user)/profile")}>
-            <Image
-              source={{
-                uri: data.user.pfp_path
-                  ? `${API_URL}/storage/${data.user.pfp_path}`
-                  : "https://i.pravatar.cc/100",
-              }}
-              className="h-10 w-10 rounded-full border"
-              style={{ borderColor: BORDER }}
-            />
-          </Pressable>
+          <View>
+            <Text className="text-[13px]" style={{ color: TEXT_SECONDARY }}>
+              {getGreeting()}
+            </Text>
+            <Text
+              className="text-[19px] font-bold mt-0.5"
+              style={{ color: TEXT_PRIMARY }}
+            >
+              {data.user.first_name}
+            </Text>
+          </View>
 
-          <Pressable
-            className="h-10 w-10 items-center justify-center rounded-full border"
-            style={{ backgroundColor: SURFACE, borderColor: BORDER }}
-          >
-            <Bell size={18} color={TEXT_PRIMARY} strokeWidth={2} />
-          </Pressable>
+          <View className="flex-row items-center gap-2.5">
+            <Pressable
+              onPress={() => router.push("/profile")}
+              className="h-11 w-11 items-center justify-center rounded-full border"
+              style={{ backgroundColor: SURFACE, borderColor: BORDER }}
+            >
+              <Settings size={18} color={TEXT_PRIMARY} strokeWidth={1.8} />
+            </Pressable>
+
+            <View>
+              <Pressable
+                onPress={() => setNotifOpen((v) => !v)}
+                className="h-11 w-11 items-center justify-center rounded-full border"
+                style={{ backgroundColor: SURFACE, borderColor: BORDER }}
+              >
+                <Bell size={18} color={TEXT_PRIMARY} strokeWidth={1.8} />
+              </Pressable>
+
+              {notifOpen && (
+                <View
+                  className="absolute top-[52px] right-0 w-64 rounded-2xl border p-2"
+                  style={{
+                    backgroundColor: SHEET_BG,
+                    borderColor: BORDER,
+                    zIndex: 10,
+                  }}
+                >
+                  <Text
+                    className="text-[11px] font-semibold uppercase tracking-wider px-2 pt-2 pb-1"
+                    style={{ color: TEXT_SECONDARY }}
+                  >
+                    Notifications
+                  </Text>
+                  {/* No notifications backend yet — placeholder only */}
+                  <Text
+                    className="text-sm px-2 py-3"
+                    style={{ color: TEXT_MUTED }}
+                  >
+                    No notifications yet
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
         </View>
 
-        {/* TOP SECTION */}
-        <View className="px-6 pt-10">
+        {/* BALANCE CARD */}
+        <View className="px-5 pt-10">
           <View className="w-full">
             <Text
               className="text-[11px] font-semibold uppercase tracking-[2px]"
@@ -349,7 +484,7 @@ export default function UserDashboard() {
               showsHorizontalScrollIndicator={false}
               onMomentumScrollEnd={(e) => {
                 const index = Math.round(
-                  e.nativeEvent.contentOffset.x / PROMO_WIDTH,
+                  e.nativeEvent.contentOffset.x / promoWidth,
                 );
                 setActivePromo(index);
               }}
@@ -359,8 +494,8 @@ export default function UserDashboard() {
                   key={index}
                   source={source}
                   style={{
-                    width: PROMO_WIDTH,
-                    height: PROMO_HEIGHT,
+                    width: promoWidth,
+                    height: promoHeight,
                     borderRadius: 24,
                   }}
                   resizeMode="cover"
@@ -389,126 +524,83 @@ export default function UserDashboard() {
 
           {/* RECENT ACTIVITY */}
           <View className="mt-9">
-            <View className="mb-4 flex-row items-center justify-between">
+            <View className="mb-3 flex-row items-center justify-between">
               <Text
-                className="text-lg font-bold"
+                className="text-[15px] font-bold"
                 style={{ color: TEXT_PRIMARY }}
               >
                 Recent Activity
               </Text>
 
-              {/* NOTE: /(user)/transactions doesn't exist yet — build that
-                  screen, then this link is ready to go. */}
               <Pressable
-                onPress={() => router.push("/(user)/transactions" as any)}
-                className="flex-row items-center gap-0.5"
+                onPress={() => router.push("/transactions")}
                 hitSlop={8}
               >
                 <Text
-                  className="text-sm font-medium"
-                  style={{ color: TEXT_SECONDARY }}
+                  className="text-[12.5px] font-semibold"
+                  style={{ color: ACCENT }}
                 >
                   See all
                 </Text>
-                <ChevronRight
-                  size={16}
-                  color={TEXT_SECONDARY}
-                  strokeWidth={2}
-                />
               </Pressable>
             </View>
 
             {recentActivity.length === 0 && (
-              <View
-                className="rounded-2xl border py-8 items-center"
-                style={{ backgroundColor: SURFACE, borderColor: BORDER }}
+              <Text
+                className="text-sm py-6 text-center"
+                style={{ color: TEXT_MUTED }}
               >
-                <Text className="text-sm" style={{ color: TEXT_MUTED }}>
-                  No transactions yet
-                </Text>
-              </View>
+                No transactions yet
+              </Text>
             )}
 
             {recentActivity.map((item, index) => {
-              const isTransaction = item._source === "transaction";
-              const isWithdrawalRequest = item._source === "withdrawal_request";
+              const { title, settled, isOutgoing } = buildRowInfo(item);
+              const initials = getInitials(item, title);
 
-              const isOutgoing = isTransaction
-                ? item.direction === "sent"
-                : isWithdrawalRequest
-                  ? true
-                  : false;
-
-              const Icon = isOutgoing ? ArrowUpRight : ArrowDownLeft;
-              const amountColor = isOutgoing ? ERROR : SUCCESS;
-
-              let title = "Transaction";
-
-              if (isTransaction) {
-                if (item.counterparty) {
-                  const counterpartyLabel =
-                    item.counterparty.name?.trim() ||
-                    item.counterparty.phone_number ||
-                    "Unknown";
-
-                  if (item.type === "request_payment") {
-                    title =
-                      item.direction === "sent"
-                        ? `You paid ${counterpartyLabel}'s request`
-                        : `Request paid by ${counterpartyLabel}`;
-                  } else {
-                    title =
-                      item.direction === "sent"
-                        ? `Sent to ${counterpartyLabel}`
-                        : `Received from ${counterpartyLabel}`;
-                  }
-                } else {
-                  title = String(item.type ?? "Transaction")
-                    .replace(/_/g, " ")
-                    .replace(/\b\w/g, (c: string) => c.toUpperCase());
-                }
-              } else if (isWithdrawalRequest) {
-                title = "Withdrawal";
-              } else {
-                title = "Payment Request";
-              }
+              // Received = accent green, sent = neutral light — matches
+              // the reference design rather than the red/green convention
+              // used elsewhere in the app.
+              const amountColor = !settled
+                ? TEXT_MUTED
+                : isOutgoing
+                  ? TEXT_PRIMARY
+                  : ACCENT;
 
               return (
                 <View
                   key={index}
-                  className="mb-3 flex-row items-center justify-between rounded-2xl border px-4 py-3"
-                  style={{ backgroundColor: SURFACE, borderColor: BORDER }}
+                  className="flex-row items-center gap-3 py-2.5"
                 >
-                  <View className="flex-row items-center gap-3">
-                    <View
-                      className="h-9 w-9 items-center justify-center rounded-full"
-                      style={{ backgroundColor: `${amountColor}1A` }}
+                  <View
+                    className="h-[38px] w-[38px] items-center justify-center rounded-full border"
+                    style={{ backgroundColor: SURFACE, borderColor: BORDER }}
+                  >
+                    <Text
+                      className="text-[13px] font-bold"
+                      style={{
+                        color: settled && !isOutgoing ? ACCENT : TEXT_SECONDARY,
+                      }}
                     >
-                      <Icon size={16} color={amountColor} strokeWidth={2.5} />
-                    </View>
+                      {initials}
+                    </Text>
+                  </View>
 
-                    <View>
-                      <Text
-                        className="font-semibold"
-                        style={{ color: TEXT_PRIMARY }}
-                      >
-                        {title}
-                      </Text>
-
-                      <Text
-                        className="text-xs"
-                        style={{ color: TEXT_SECONDARY }}
-                      >
-                        {new Date(item.created_at).toLocaleDateString()}
-                      </Text>
-                    </View>
+                  <View className="flex-1">
+                    <Text
+                      className="font-semibold"
+                      numberOfLines={1}
+                      style={{ color: TEXT_PRIMARY }}
+                    >
+                      {title}
+                    </Text>
                   </View>
 
                   <Text
                     className="font-semibold"
                     style={{ color: amountColor }}
                   >
-                    {isOutgoing ? "-" : "+"}${item.amount}
+                    {settled ? (isOutgoing ? "-" : "+") : ""}${item.amount}
                   </Text>
                 </View>
               );
@@ -519,14 +611,18 @@ export default function UserDashboard() {
 
       {/* SEND MODAL */}
       <Modal visible={sendVisible} transparent animationType="slide">
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        <View
           className="flex-1 justify-end"
           style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
         >
           <View
-            className="rounded-t-3xl border-t p-6 pb-10"
-            style={{ backgroundColor: SHEET_BG, borderColor: BORDER }}
+            className="rounded-t-3xl border-t p-6"
+            style={{
+              backgroundColor: SHEET_BG,
+              borderColor: BORDER,
+              paddingBottom: insets.bottom + 24,
+              marginBottom: keyboardHeight,
+            }}
           >
             <Text
               className="mb-6 text-2xl font-bold"
@@ -574,7 +670,7 @@ export default function UserDashboard() {
               <Text style={{ color: TEXT_SECONDARY }}>Cancel</Text>
             </Pressable>
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
 
       {/* CONFIRM MODAL */}
@@ -656,7 +752,12 @@ export default function UserDashboard() {
         >
           <View
             className="rounded-t-3xl border-t p-6"
-            style={{ backgroundColor: SHEET_BG, borderColor: BORDER }}
+            style={{
+              backgroundColor: SHEET_BG,
+              borderColor: BORDER,
+              paddingBottom: insets.bottom + 24,
+              marginBottom: keyboardHeight,
+            }}
           >
             <Text
               className="mb-5 text-xl font-bold"
@@ -715,8 +816,12 @@ export default function UserDashboard() {
           style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
         >
           <View
-            className="rounded-t-3xl border-t p-6 pb-10"
-            style={{ backgroundColor: SHEET_BG, borderColor: BORDER }}
+            className="rounded-t-3xl border-t p-6"
+            style={{
+              backgroundColor: SHEET_BG,
+              borderColor: BORDER,
+              paddingBottom: insets.bottom + 24,
+            }}
           >
             <Text
               className="mb-5 text-center text-2xl font-bold"

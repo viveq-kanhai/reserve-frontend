@@ -21,8 +21,8 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useAuth } from "../../context/AuthContext";
-import { api, API_URL } from "../../services/api";
+import { useAuth } from "../context/AuthContext";
+import { api, API_URL } from "../services/api";
 
 const BG = "#0B0D10";
 const SHEET_BG = "#101317";
