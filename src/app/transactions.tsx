@@ -11,6 +11,7 @@ import {
   View,
 } from "react-native";
 import QRCode from "react-native-qrcode-svg";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "../services/api";
 
 const SHEET_BG = "#101317";
@@ -22,7 +23,6 @@ const TEXT_PRIMARY = "#EDEEF0";
 const TEXT_SECONDARY = "#8B9098";
 const TEXT_MUTED = "#54585F";
 const ERROR = "#E5484D";
-const SUCCESS = "#4CC38A";
 
 const FILTERS = [
   { key: "all", label: "All" },
@@ -111,6 +111,7 @@ function buildRowInfo(item: any) {
 
 export default function TransactionsScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   const [transactions, setTransactions] = useState<any[]>([]);
   const [page, setPage] = useState(1);
@@ -483,27 +484,26 @@ export default function TransactionsScreen() {
           style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
         >
           <View
-            className="rounded-t-3xl border-t p-6 pb-10"
-            style={{ backgroundColor: SHEET_BG, borderColor: BORDER }}
+            className="rounded-t-3xl border-t p-6"
+            style={{
+              backgroundColor: SHEET_BG,
+              borderColor: BORDER,
+              paddingBottom: insets.bottom + 24,
+            }}
           >
             {detailItem?._source === "transaction" ? (
               // ---- Paid payment request: info only, no actions ----
               <>
                 <View className="items-center mb-6">
                   <View
-                    className="h-20 w-20 rounded-full items-center justify-center"
-                    style={{ backgroundColor: `${SUCCESS}1A` }}
+                    className="h-16 w-16 rounded-full items-center justify-center border"
+                    style={{ backgroundColor: SURFACE, borderColor: BORDER }}
                   >
-                    <View
-                      className="h-14 w-14 rounded-full items-center justify-center"
-                      style={{ backgroundColor: SUCCESS }}
-                    >
-                      <Check size={26} color={BG} strokeWidth={3} />
-                    </View>
+                    <Check size={26} color={ACCENT} strokeWidth={2.5} />
                   </View>
 
                   <Text
-                    className="mt-4 text-xl font-bold"
+                    className="mt-4 text-lg font-semibold"
                     style={{ color: TEXT_PRIMARY }}
                   >
                     {detailItem.direction === "sent"
@@ -511,10 +511,7 @@ export default function TransactionsScreen() {
                       : "Payment Received"}
                   </Text>
 
-                  <Text
-                    className="mt-1 text-sm"
-                    style={{ color: TEXT_SECONDARY }}
-                  >
+                  <Text className="mt-1" style={{ color: TEXT_SECONDARY }}>
                     {detailItem.direction === "sent"
                       ? `to ${detailItem.counterparty?.name?.trim() || detailItem.counterparty?.phone_number || "Unknown"}`
                       : `from ${detailItem.counterparty?.name?.trim() || detailItem.counterparty?.phone_number || "Unknown"}`}
@@ -522,38 +519,33 @@ export default function TransactionsScreen() {
                 </View>
 
                 <View
-                  className="rounded-3xl border p-6 mb-6 items-center"
+                  className="rounded-2xl border p-5 mb-6"
                   style={{ backgroundColor: SURFACE, borderColor: BORDER }}
                 >
                   <Text
-                    className="text-[13px] font-semibold uppercase tracking-widest"
+                    className="text-xs uppercase tracking-widest text-center"
                     style={{ color: TEXT_SECONDARY }}
                   >
                     Amount
                   </Text>
                   <Text
-                    className="mt-2 text-5xl font-bold tracking-tight"
-                    style={{ color: SUCCESS }}
+                    className="mt-1 text-4xl font-bold text-center"
+                    style={{ color: TEXT_PRIMARY }}
                   >
                     ${detailItem.amount}
                   </Text>
 
                   {detailItem.note && (
-                    <View
-                      className="mt-4 w-full rounded-2xl px-4 py-3"
-                      style={{ backgroundColor: BG }}
+                    <Text
+                      className="mt-3 text-center"
+                      style={{ color: TEXT_SECONDARY }}
                     >
-                      <Text
-                        className="text-center italic"
-                        style={{ color: TEXT_SECONDARY }}
-                      >
-                        "{detailItem.note}"
-                      </Text>
-                    </View>
+                      "{detailItem.note}"
+                    </Text>
                   )}
 
                   <View
-                    className="mt-4 w-full pt-4"
+                    className="mt-4 pt-4"
                     style={{ borderTopWidth: 1, borderTopColor: BORDER }}
                   >
                     <View className="flex-row items-center justify-between">
@@ -581,17 +573,8 @@ export default function TransactionsScreen() {
                   </View>
                 </View>
 
-                <Pressable
-                  onPress={closeDetail}
-                  className="items-center rounded-2xl py-4"
-                  style={{ backgroundColor: SURFACE }}
-                >
-                  <Text
-                    className="font-semibold"
-                    style={{ color: TEXT_PRIMARY }}
-                  >
-                    Close
-                  </Text>
+                <Pressable onPress={closeDetail} className="items-center">
+                  <Text style={{ color: TEXT_SECONDARY }}>Close</Text>
                 </Pressable>
               </>
             ) : detailLoading ? (

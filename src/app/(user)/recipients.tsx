@@ -13,7 +13,6 @@ import {
   FlatList,
   Image,
   Keyboard,
-  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -22,6 +21,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "../../services/api";
 
 const BG = "#0B0D10";
@@ -33,6 +33,35 @@ const TEXT_PRIMARY = "#EDEEF0";
 const TEXT_SECONDARY = "#8B9098";
 const TEXT_MUTED = "#54585F";
 const ERROR = "#E5484D";
+
+// Tracks the real keyboard height via native events instead of relying on
+// KeyboardAvoidingView's automatic behavior — which is unreliable inside
+// React Native's <Modal>, since Modal renders in its own native window and
+// often doesn't receive proper keyboard-frame data (especially on Android).
+function useKeyboardHeight() {
+  const [height, setHeight] = useState(0);
+
+  useEffect(() => {
+    const showEvent =
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent =
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      setHeight(e.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setHeight(0);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  return height;
+}
 
 // ---- Reusable modal input, kept local to this file ----
 function ModalField({
@@ -67,6 +96,9 @@ function ModalField({
 }
 
 export default function Recipients() {
+  const insets = useSafeAreaInsets();
+  const keyboardHeight = useKeyboardHeight();
+
   const [recipients, setRecipients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -304,57 +336,58 @@ export default function Recipients() {
             className="flex-1 justify-end"
             style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
           >
-            <KeyboardAvoidingView
-              behavior={Platform.OS === "ios" ? "padding" : "height"}
+            <View
+              className="rounded-t-3xl border-t px-6 pt-6"
+              style={{
+                backgroundColor: SHEET_BG,
+                borderColor: BORDER,
+                paddingBottom: insets.bottom + 24,
+                marginBottom: keyboardHeight,
+              }}
             >
-              <View
-                className="rounded-t-3xl border-t px-6 pt-6 pb-10"
-                style={{ backgroundColor: SHEET_BG, borderColor: BORDER }}
+              <Text
+                className="mb-5 text-xl font-bold"
+                style={{ color: TEXT_PRIMARY }}
               >
-                <Text
-                  className="mb-5 text-xl font-bold"
-                  style={{ color: TEXT_PRIMARY }}
-                >
+                Add Recipient
+              </Text>
+
+              <ModalField
+                placeholder="Phone Number"
+                value={phoneNumber}
+                onChangeText={setPhoneNumber}
+              />
+
+              <ModalField
+                placeholder="Nickname (optional)"
+                value={nickname}
+                onChangeText={setNickname}
+              />
+
+              {/* ADD BUTTON */}
+              <Pressable
+                onPress={addRecipient}
+                className="items-center rounded-2xl py-4"
+                style={{ backgroundColor: ACCENT }}
+              >
+                <Text className="font-semibold" style={{ color: BG }}>
                   Add Recipient
                 </Text>
+              </Pressable>
 
-                <ModalField
-                  placeholder="Phone Number"
-                  value={phoneNumber}
-                  onChangeText={setPhoneNumber}
-                />
-
-                <ModalField
-                  placeholder="Nickname (optional)"
-                  value={nickname}
-                  onChangeText={setNickname}
-                />
-
-                {/* ADD BUTTON */}
-                <Pressable
-                  onPress={addRecipient}
-                  className="items-center rounded-2xl py-4"
-                  style={{ backgroundColor: ACCENT }}
+              {/* CANCEL */}
+              <Pressable
+                onPress={() => setModalVisible(false)}
+                className="mt-3 items-center py-4"
+              >
+                <Text
+                  className="font-semibold"
+                  style={{ color: TEXT_SECONDARY }}
                 >
-                  <Text className="font-semibold" style={{ color: BG }}>
-                    Add Recipient
-                  </Text>
-                </Pressable>
-
-                {/* CANCEL */}
-                <Pressable
-                  onPress={() => setModalVisible(false)}
-                  className="mt-3 items-center py-4"
-                >
-                  <Text
-                    className="font-semibold"
-                    style={{ color: TEXT_SECONDARY }}
-                  >
-                    Cancel
-                  </Text>
-                </Pressable>
-              </View>
-            </KeyboardAvoidingView>
+                  Cancel
+                </Text>
+              </Pressable>
+            </View>
           </View>
         </TouchableWithoutFeedback>
       </Modal>
@@ -366,8 +399,12 @@ export default function Recipients() {
           style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
         >
           <View
-            className="rounded-t-3xl border-t p-6 pb-10"
-            style={{ backgroundColor: SHEET_BG, borderColor: BORDER }}
+            className="rounded-t-3xl border-t p-6"
+            style={{
+              backgroundColor: SHEET_BG,
+              borderColor: BORDER,
+              paddingBottom: insets.bottom + 24,
+            }}
           >
             <Image
               source={{
@@ -452,8 +489,13 @@ export default function Recipients() {
           style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
         >
           <View
-            className="rounded-t-3xl border-t p-6 pb-10"
-            style={{ backgroundColor: SHEET_BG, borderColor: BORDER }}
+            className="rounded-t-3xl border-t p-6"
+            style={{
+              backgroundColor: SHEET_BG,
+              borderColor: BORDER,
+              paddingBottom: insets.bottom + 24,
+              marginBottom: keyboardHeight,
+            }}
           >
             <Text
               className="mb-5 text-2xl font-bold"
@@ -511,55 +553,56 @@ export default function Recipients() {
             className="flex-1 justify-end"
             style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
           >
-            <KeyboardAvoidingView
-              behavior={Platform.OS === "ios" ? "padding" : "height"}
+            <View
+              className="rounded-t-3xl border-t px-6 pt-6"
+              style={{
+                backgroundColor: SHEET_BG,
+                borderColor: BORDER,
+                paddingBottom: insets.bottom + 24,
+                marginBottom: keyboardHeight,
+              }}
             >
-              <View
-                className="rounded-t-3xl border-t px-6 pt-6 pb-10"
-                style={{ backgroundColor: SHEET_BG, borderColor: BORDER }}
+              <Text
+                className="mb-6 text-2xl font-bold"
+                style={{ color: TEXT_PRIMARY }}
+              >
+                Send Points
+              </Text>
+
+              <Text className="mb-2" style={{ color: TEXT_SECONDARY }}>
+                Recipient
+              </Text>
+
+              <ModalField value={phoneNumber} editable={false} />
+
+              <ModalField
+                placeholder="Amount"
+                value={amount}
+                onChangeText={setAmount}
+                keyboardType="decimal-pad"
+              />
+
+              <Pressable
+                disabled={!amount}
+                onPress={() => setConfirmVisible(true)}
+                className="items-center rounded-2xl py-4"
+                style={{ backgroundColor: amount ? ACCENT : BORDER }}
               >
                 <Text
-                  className="mb-6 text-2xl font-bold"
-                  style={{ color: TEXT_PRIMARY }}
+                  className="font-semibold"
+                  style={{ color: amount ? BG : TEXT_MUTED }}
                 >
-                  Send Points
+                  Continue
                 </Text>
+              </Pressable>
 
-                <Text className="mb-2" style={{ color: TEXT_SECONDARY }}>
-                  Recipient
-                </Text>
-
-                <ModalField value={phoneNumber} editable={false} />
-
-                <ModalField
-                  placeholder="Amount"
-                  value={amount}
-                  onChangeText={setAmount}
-                  keyboardType="decimal-pad"
-                />
-
-                <Pressable
-                  disabled={!amount}
-                  onPress={() => setConfirmVisible(true)}
-                  className="items-center rounded-2xl py-4"
-                  style={{ backgroundColor: amount ? ACCENT : BORDER }}
-                >
-                  <Text
-                    className="font-semibold"
-                    style={{ color: amount ? BG : TEXT_MUTED }}
-                  >
-                    Continue
-                  </Text>
-                </Pressable>
-
-                <Pressable
-                  onPress={() => setSendVisible(false)}
-                  className="mt-4 items-center"
-                >
-                  <Text style={{ color: TEXT_SECONDARY }}>Cancel</Text>
-                </Pressable>
-              </View>
-            </KeyboardAvoidingView>
+              <Pressable
+                onPress={() => setSendVisible(false)}
+                className="mt-4 items-center"
+              >
+                <Text style={{ color: TEXT_SECONDARY }}>Cancel</Text>
+              </Pressable>
+            </View>
           </View>
         </TouchableWithoutFeedback>
       </Modal>
