@@ -332,6 +332,10 @@ export default function UserDashboard() {
       loadDashboard();
     } catch (error: any) {
       console.log(error.response?.data ?? error);
+      Alert.alert(
+        "Couldn't create request",
+        error.response?.data?.message ?? "Something went wrong.",
+      );
     } finally {
       setRequesting(false);
     }
@@ -437,7 +441,13 @@ export default function UserDashboard() {
 
             <View className="mt-5 flex-row items-center gap-3">
               <Pressable
-                onPress={() => setSendVisible(true)}
+                onPress={() => {
+                  if (data.user.kyc_status !== "verified") {
+                    router.push("/kyc");
+                    return;
+                  }
+                  setSendVisible(true);
+                }}
                 className="flex-row items-center gap-1.5 rounded-full px-5 py-2.5"
                 style={{ backgroundColor: ACCENT }}
               >
@@ -788,11 +798,16 @@ export default function UserDashboard() {
 
             <Pressable
               onPress={createPaymentRequest}
-              disabled={requesting}
+              disabled={requesting || !requestAmount}
               className="mt-2 rounded-2xl py-4"
-              style={{ backgroundColor: requesting ? `${ACCENT}80` : ACCENT }}
+              style={{
+                backgroundColor: requesting || !requestAmount ? BORDER : ACCENT,
+              }}
             >
-              <Text className="text-center font-semibold" style={{ color: BG }}>
+              <Text
+                className="text-center font-semibold"
+                style={{ color: requestAmount ? BG : TEXT_MUTED }}
+              >
                 {requesting ? "Creating..." : "Create Request"}
               </Text>
             </Pressable>
